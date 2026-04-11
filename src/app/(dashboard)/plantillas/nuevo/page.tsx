@@ -68,10 +68,10 @@ export default function NuevaPlantillaPage() {
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Nueva Plantilla</h1>
+        <h1 className="text-2xl font-bold text-heading">Nueva Plantilla</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-edge p-6 space-y-5">
         <Input
           label="Nombre" required
           value={form.nombre}

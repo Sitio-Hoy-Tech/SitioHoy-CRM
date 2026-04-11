@@ -86,7 +86,7 @@ export default function ContactosPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Contactos</h1>
+        <h1 className="text-2xl font-bold text-heading">Contactos</h1>
         <Link href="/contactos/nuevo">
           <Button>+ Nuevo contacto</Button>
         </Link>
@@ -95,14 +95,14 @@ export default function ContactosPage() {
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[--text-muted]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             placeholder="Buscar..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-48 bg-[--bg-input] border border-[--border-primary] rounded-lg pl-9 pr-3.5 py-2 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+            className="w-48 bg-input border border-edge rounded-lg pl-9 pr-3.5 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
           />
         </div>
         <Select
@@ -136,56 +136,56 @@ export default function ContactosPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[--border-primary]">
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Teléfono</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Estado</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Etiqueta</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Origen</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Fecha</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
+              <tr className="border-b border-edge">
+                <th className="text-left px-4 py-3 font-medium text-muted">Nombre</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Email</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Teléfono</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Estado</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Etiqueta</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Origen</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Fecha</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-[--text-muted]">Cargando...</td>
+                  <td colSpan={8} className="text-center py-12 text-muted">Cargando...</td>
                 </tr>
               ) : contactos.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-[--text-muted]">No hay contactos</td>
+                  <td colSpan={8} className="text-center py-12 text-muted">No hay contactos</td>
                 </tr>
               ) : (
                 contactos.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors"
+                    className="border-b border-edge hover:bg-elevated transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-[--text-primary]">
+                    <td className="px-4 py-3 font-medium text-heading">
                       {c.nombre} {c.apellido}
                     </td>
-                    <td className="px-4 py-3 text-[--text-secondary]">{c.email || "-"}</td>
-                    <td className="px-4 py-3 text-[--text-secondary]">{c.telefono || "-"}</td>
+                    <td className="px-4 py-3 text-body">{c.email || "-"}</td>
+                    <td className="px-4 py-3 text-body">{c.telefono || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-[--accent-soft] text-[--accent] border border-[--accent-border]">
+                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-soft text-accent border border-accent-border">
                         {c.estado?.nombre}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[--text-secondary]">{c.etiqueta_negocio?.nombre || "-"}</td>
-                    <td className="px-4 py-3 text-[--text-secondary]">{c.origen}</td>
-                    <td className="px-4 py-3 text-[--text-secondary]">
+                    <td className="px-4 py-3 text-body">{c.etiqueta_negocio?.nombre || "-"}</td>
+                    <td className="px-4 py-3 text-body">{c.origen}</td>
+                    <td className="px-4 py-3 text-body">
                       {new Date(c.fecha_contacto).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => router.push(`/contactos/${c.id}`)}
-                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                          className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
                           title="Ver detalle"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,7 +195,7 @@ export default function ContactosPage() {
                         </button>
                         <button
                           onClick={() => router.push(`/contactos/${c.id}/seguimiento`)}
-                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                          className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
                           title="Seguimiento"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +204,7 @@ export default function ContactosPage() {
                         </button>
                         <button
                           onClick={() => setDeleteId(c.id)}
-                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                          className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                           title="Eliminar"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,8 +221,8 @@ export default function ContactosPage() {
         </div>
 
         {count > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[--border-primary]">
-            <p className="text-sm text-[--text-muted]">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-edge">
+            <p className="text-sm text-muted">
               Mostrando {from}-{to} de {count} contactos
             </p>
             {totalPages > 1 && (
@@ -230,7 +230,7 @@ export default function ContactosPage() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   &lt;
                 </button>
@@ -240,8 +240,8 @@ export default function ContactosPage() {
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                       page === p
-                        ? "bg-[--accent] text-white"
-                        : "text-[--text-muted] hover:bg-[--bg-elevated]"
+                        ? "bg-accent text-white"
+                        : "text-muted hover:bg-elevated"
                     }`}
                   >
                     {p}
@@ -250,7 +250,7 @@ export default function ContactosPage() {
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   &gt;
                 </button>
@@ -261,7 +261,7 @@ export default function ContactosPage() {
       </div>
 
       <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
-        <p className="text-sm text-[--text-secondary] mb-4">
+        <p className="text-sm text-body mb-4">
           ¿Estás seguro de que querés eliminar este registro? Esta acción no se puede deshacer.
         </p>
         <div className="flex justify-end gap-2">

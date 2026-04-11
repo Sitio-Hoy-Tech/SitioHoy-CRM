@@ -112,10 +112,10 @@ export default function NuevoClientePage() {
   return (
     <div className="max-w-4xl animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Nuevo Cliente</h1>
+        <h1 className="text-2xl font-bold text-heading">Nuevo Cliente</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-edge p-6 space-y-5">
         <Input
           label="Nombre de la empresa"
           required
@@ -185,12 +185,12 @@ export default function NuevoClientePage() {
         />
 
         {selectedPlan && (
-          <div className="bg-[--accent-soft] rounded-lg border border-[--accent-border] p-4 flex items-center gap-3">
-            <svg className="w-5 h-5 text-[--accent] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-accent-soft rounded-lg border border-accent-border p-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
             </svg>
-            <p className="text-sm text-[--text-primary]">
-              Plan {selectedPlan.nombre}: <span className="font-bold text-[--accent]">${Number(selectedPlan.precio).toLocaleString("es-AR")}/mes</span>
+            <p className="text-sm text-heading">
+              Plan {selectedPlan.nombre}: <span className="font-bold text-accent">${Number(selectedPlan.precio).toLocaleString("es-AR")}/mes</span>
             </p>
           </div>
         )}
@@ -203,13 +203,13 @@ export default function NuevoClientePage() {
             onChange={(val) => updateField("fecha_pago", val)}
           />
           <div>
-            <label className="block text-sm font-medium text-[--text-secondary] mb-1.5">
+            <label className="block text-sm font-medium text-body mb-1.5">
               Fecha de vencimiento
             </label>
-            <div className="w-full border border-[--border-primary] rounded-lg px-3.5 py-2.5 text-sm text-[--text-muted] bg-[--bg-elevated]">
+            <div className="w-full border border-edge rounded-lg px-3.5 py-2.5 text-sm text-muted bg-elevated">
               {fechaVencimiento || "Se calcula automáticamente"}
             </div>
-            <p className="text-xs text-[--text-muted] mt-1">30 días después del pago</p>
+            <p className="text-xs text-muted mt-1">30 días después del pago</p>
           </div>
         </div>
 

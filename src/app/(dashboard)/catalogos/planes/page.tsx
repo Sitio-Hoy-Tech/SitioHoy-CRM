@@ -89,22 +89,22 @@ export default function PlanesPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold text-[--text-primary] mb-6">Catálogos &gt; Planes</h1>
+      <h1 className="text-2xl font-bold text-heading mb-6">Catálogos &gt; Planes</h1>
 
       {/* Inline create form */}
       <form onSubmit={handleCreate} className="flex items-end gap-3 mb-6">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-[--text-secondary] mb-1.5">Nombre del plan</label>
+          <label className="block text-sm font-medium text-body mb-1.5">Nombre del plan</label>
           <input
             required
             value={form.nombre}
             onChange={(e) => setForm(f => ({ ...f, nombre: e.target.value }))}
             placeholder="Nombre"
-            className="w-full bg-[--bg-input] border border-[--border-primary] rounded-lg px-3.5 py-2.5 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+            className="w-full bg-input border border-edge rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
           />
         </div>
         <div className="w-40">
-          <label className="block text-sm font-medium text-[--text-secondary] mb-1.5">Precio</label>
+          <label className="block text-sm font-medium text-body mb-1.5">Precio</label>
           <CurrencyInput required value={form.precio} onChange={(val) => setForm(f => ({ ...f, precio: val }))} />
         </div>
         <Button type="submit" loading={saving}>Agregar</Button>
@@ -112,19 +112,19 @@ export default function PlanesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {loading ? (
-          <p className="text-[--text-muted] col-span-3 text-center py-8">Cargando...</p>
+          <p className="text-muted col-span-3 text-center py-8">Cargando...</p>
         ) : planes.length === 0 ? (
-          <p className="text-[--text-muted] col-span-3 text-center py-8">Sin planes</p>
+          <p className="text-muted col-span-3 text-center py-8">Sin planes</p>
         ) : (
           planes.map((plan) => (
-            <div key={plan.id} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-5 hover:border-[--accent-border] transition-all duration-300">
-              <h3 className="font-semibold text-[--text-primary] text-lg mb-2">{plan.nombre}</h3>
-              <p className="text-2xl font-bold text-[--accent] mb-4">${Number(plan.precio).toLocaleString("es-AR")}</p>
+            <div key={plan.id} className="bg-card rounded-xl border border-edge p-5 hover:border-accent-border transition-all duration-300">
+              <h3 className="font-semibold text-heading text-lg mb-2">{plan.nombre}</h3>
+              <p className="text-2xl font-bold text-accent mb-4">${Number(plan.precio).toLocaleString("es-AR")}</p>
               {plan.beneficios && (
                 <div className="space-y-1.5 mb-4">
                   {plan.beneficios.split("\n").filter(Boolean).map((b, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-[--text-secondary]">
-                      <svg className="w-4 h-4 text-[--accent] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div key={i} className="flex items-start gap-2 text-sm text-body">
+                      <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       {b}
@@ -138,13 +138,13 @@ export default function PlanesPage() {
                     setEditId(plan.id);
                     setEditForm({ nombre: plan.nombre, beneficios: plan.beneficios, precio: String(plan.precio) });
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[--text-secondary] border border-[--border-primary] rounded-lg hover:bg-[--bg-elevated] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-body border border-edge rounded-lg hover:bg-elevated transition-colors"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => setDeleteId(plan.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[--danger] border border-red-500/20 rounded-lg hover:bg-[--danger-soft] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-danger border border-red-500/20 rounded-lg hover:bg-danger-soft transition-colors"
                 >
                   Eliminar
                 </button>
@@ -167,7 +167,7 @@ export default function PlanesPage() {
       </Modal>
 
       <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
-        <p className="text-sm text-[--text-secondary] mb-4">¿Estás seguro? Esta acción no se puede deshacer.</p>
+        <p className="text-sm text-body mb-4">¿Estás seguro? Esta acción no se puede deshacer.</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>

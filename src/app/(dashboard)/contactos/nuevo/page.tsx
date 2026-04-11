@@ -103,10 +103,10 @@ export default function NuevoContactoPage() {
   return (
     <div className="max-w-4xl animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Nuevo Contacto</h1>
+        <h1 className="text-2xl font-bold text-heading">Nuevo Contacto</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-edge p-6 space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Nombre"

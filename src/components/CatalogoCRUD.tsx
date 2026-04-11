@@ -98,7 +98,7 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold text-[--text-primary] mb-6">Catálogos &gt; {title}</h1>
+      <h1 className="text-2xl font-bold text-heading mb-6">Catálogos &gt; {title}</h1>
 
       {/* Inline create */}
       <form onSubmit={handleCreate} className="flex items-center gap-3 mb-6">
@@ -107,37 +107,37 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nombre del estado..."
           required
-          className="flex-1 bg-[--bg-input] border border-[--border-primary] rounded-lg px-3.5 py-2.5 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+          className="flex-1 bg-input border border-edge rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
         />
         <Button type="submit" loading={saving}>+ Agregar</Button>
       </form>
 
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[--border-primary]">
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Creado</th>
-              <th className="text-right px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
+            <tr className="border-b border-edge">
+              <th className="text-left px-4 py-3 font-medium text-muted">Nombre</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Creado</th>
+              <th className="text-right px-4 py-3 font-medium text-muted">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={3} className="text-center py-8 text-[--text-muted]">Cargando...</td></tr>
+              <tr><td colSpan={3} className="text-center py-8 text-muted">Cargando...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={3} className="text-center py-8 text-[--text-muted]">Sin registros</td></tr>
+              <tr><td colSpan={3} className="text-center py-8 text-muted">Sin registros</td></tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[--text-primary]">{item.nombre}</td>
-                  <td className="px-4 py-3 text-[--text-muted]">
+                <tr key={item.id} className="border-b border-edge hover:bg-elevated transition-colors">
+                  <td className="px-4 py-3 font-medium text-heading">{item.nombre}</td>
+                  <td className="px-4 py-3 text-muted">
                     {new Date(item.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => { setEditId(item.id); setEditNombre(item.nombre); }}
-                        className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                        className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
                         title="Editar"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +146,7 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
                       </button>
                       <button
                         onClick={() => setDeleteId(item.id)}
-                        className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                        className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                         title="Eliminar"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +173,7 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
       </Modal>
 
       <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
-        <p className="text-sm text-[--text-secondary] mb-4">¿Estás seguro? Esta acción no se puede deshacer.</p>
+        <p className="text-sm text-body mb-4">¿Estás seguro? Esta acción no se puede deshacer.</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>

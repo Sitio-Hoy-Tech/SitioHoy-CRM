@@ -85,7 +85,7 @@ export default function ClientesPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Clientes</h1>
+        <h1 className="text-2xl font-bold text-heading">Clientes</h1>
         <Link href="/clientes/nuevo">
           <Button>+ Nuevo cliente</Button>
         </Link>
@@ -93,14 +93,14 @@ export default function ClientesPage() {
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[--text-muted]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             placeholder="Buscar..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-48 bg-[--bg-input] border border-[--border-primary] rounded-lg pl-9 pr-3.5 py-2 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+            className="w-48 bg-input border border-edge rounded-lg pl-9 pr-3.5 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
           />
         </div>
         <Select
@@ -131,46 +131,46 @@ export default function ClientesPage() {
         />
       </div>
 
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[--border-primary]">
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Empresa</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Contacto</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Dominio</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Plan</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Etiqueta</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Vencimiento</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Estado</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
+              <tr className="border-b border-edge">
+                <th className="text-left px-4 py-3 font-medium text-muted">Empresa</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Contacto</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Dominio</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Plan</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Etiqueta</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Vencimiento</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Estado</th>
+                <th className="text-left px-4 py-3 font-medium text-muted">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-[--text-muted]">Cargando...</td>
+                  <td colSpan={8} className="text-center py-12 text-muted">Cargando...</td>
                 </tr>
               ) : clientes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-[--text-muted]">No hay clientes</td>
+                  <td colSpan={8} className="text-center py-12 text-muted">No hay clientes</td>
                 </tr>
               ) : (
                 clientes.map((c) => {
                   const dias = c.fecha_vencimiento ? diasParaVencer(c.fecha_vencimiento) : null;
                   return (
-                    <tr key={c.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
-                      <td className="px-4 py-3 font-medium text-[--text-primary]">{c.nombre_empresa}</td>
-                      <td className="px-4 py-3 text-[--text-secondary]">
+                    <tr key={c.id} className="border-b border-edge hover:bg-elevated transition-colors">
+                      <td className="px-4 py-3 font-medium text-heading">{c.nombre_empresa}</td>
+                      <td className="px-4 py-3 text-body">
                         {c.contacto ? `${c.contacto.nombre} ${c.contacto.apellido || ""}` : "-"}
                       </td>
-                      <td className="px-4 py-3 text-[--text-secondary]">{c.dominio}</td>
-                      <td className="px-4 py-3 text-[--text-secondary]">{c.plan?.nombre || "-"}</td>
-                      <td className="px-4 py-3 text-[--text-secondary]">{c.etiqueta_negocio?.nombre || "-"}</td>
+                      <td className="px-4 py-3 text-body">{c.dominio}</td>
+                      <td className="px-4 py-3 text-body">{c.plan?.nombre || "-"}</td>
+                      <td className="px-4 py-3 text-body">{c.etiqueta_negocio?.nombre || "-"}</td>
                       <td className="px-4 py-3">
                         {c.fecha_vencimiento && (
                           <span className={`text-sm ${
-                            dias !== null && dias <= 0 ? "text-red-400" : "text-[--text-secondary]"
+                            dias !== null && dias <= 0 ? "text-red-400" : "text-body"
                           }`}>
                             {new Date(c.fecha_vencimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                           </span>
@@ -179,10 +179,10 @@ export default function ClientesPage() {
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           c.estado
-                            ? "bg-[--accent-soft] text-[--accent] border border-[--accent-border]"
+                            ? "bg-accent-soft text-accent border border-accent-border"
                             : dias !== null && dias <= 0
                             ? "bg-red-500/15 text-red-400 border border-red-500/20"
-                            : "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]"
+                            : "bg-elevated text-muted border border-edge"
                         }`}>
                           {c.estado ? "Activo" : dias !== null && dias <= 0 ? "Vencido" : "Inactivo"}
                         </span>
@@ -191,7 +191,7 @@ export default function ClientesPage() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => router.push(`/clientes/${c.id}`)}
-                            className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                            className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
                             title="Editar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +200,7 @@ export default function ClientesPage() {
                           </button>
                           <button
                             onClick={() => setDeleteId(c.id)}
-                            className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                            className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                             title="Eliminar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,8 +218,8 @@ export default function ClientesPage() {
         </div>
 
         {count > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[--border-primary]">
-            <p className="text-sm text-[--text-muted]">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-edge">
+            <p className="text-sm text-muted">
               Mostrando {from}-{to} de {count} clientes
             </p>
             {totalPages > 1 && (
@@ -227,7 +227,7 @@ export default function ClientesPage() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   &lt;
                 </button>
@@ -237,8 +237,8 @@ export default function ClientesPage() {
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                       page === p
-                        ? "bg-[--accent] text-white"
-                        : "text-[--text-muted] hover:bg-[--bg-elevated]"
+                        ? "bg-accent text-white"
+                        : "text-muted hover:bg-elevated"
                     }`}
                   >
                     {p}
@@ -247,7 +247,7 @@ export default function ClientesPage() {
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   &gt;
                 </button>
@@ -258,7 +258,7 @@ export default function ClientesPage() {
       </div>
 
       <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
-        <p className="text-sm text-[--text-secondary] mb-4">
+        <p className="text-sm text-body mb-4">
           ¿Estás seguro de que querés eliminar este registro? Esta acción no se puede deshacer.
         </p>
         <div className="flex justify-end gap-2">

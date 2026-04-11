@@ -19,8 +19,8 @@ export default function Toast({ message, type = "success", onClose }: ToastProps
       <div
         className={`flex items-center gap-2.5 px-5 py-3.5 rounded-xl shadow-lg text-sm font-medium border ${
           type === "success"
-            ? "bg-[--accent-soft] text-[--accent] border-[--accent-border]"
-            : "bg-[--danger-soft] text-[--danger] border-red-500/30"
+            ? "bg-accent-soft text-accent border-accent-border"
+            : "bg-danger-soft text-danger border-red-500/30"
         }`}
       >
         {type === "success" ? (

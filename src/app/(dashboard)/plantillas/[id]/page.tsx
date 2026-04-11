@@ -68,19 +68,19 @@ export default function PlantillaDetallePage() {
     setToast({ message: "Plantilla actualizada", type: "success" });
   }
 
-  if (loading) return <div className="text-[--text-muted] py-12 text-center">Cargando...</div>;
-  if (!plantilla) return <div className="text-[--text-muted] py-12 text-center">Plantilla no encontrada</div>;
+  if (loading) return <div className="text-muted py-12 text-center">Cargando...</div>;
+  if (!plantilla) return <div className="text-muted py-12 text-center">Plantilla no encontrada</div>;
 
   return (
     <div className="max-w-2xl animate-fade-in">
       <div className="mb-6">
-        <button onClick={() => router.push("/plantillas")} className="text-sm text-[--text-muted] hover:text-[--text-primary] mb-2 inline-block transition-colors">
+        <button onClick={() => router.push("/plantillas")} className="text-sm text-muted hover:text-heading mb-2 inline-block transition-colors">
           &larr; Volver a plantillas
         </button>
-        <h1 className="text-2xl font-bold text-[--text-primary]">Editar: {plantilla.nombre}</h1>
+        <h1 className="text-2xl font-bold text-heading">Editar: {plantilla.nombre}</h1>
       </div>
 
-      <form onSubmit={handleSave} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+      <form onSubmit={handleSave} className="bg-card rounded-xl border border-edge p-6 space-y-5">
         <Input
           label="Nombre" required
           value={form.nombre}
@@ -95,12 +95,12 @@ export default function PlantillaDetallePage() {
         />
 
         {form.url_plantilla && (
-          <div className="bg-[--bg-elevated] rounded-lg border border-[--border-primary] p-3">
+          <div className="bg-elevated rounded-lg border border-edge p-3">
             <a
               href={form.url_plantilla}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[--accent] text-sm hover:underline flex items-center gap-2"
+              className="text-accent text-sm hover:underline flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

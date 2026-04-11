@@ -7,10 +7,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: "bg-[--accent] text-white hover:bg-[--accent-hover] focus:ring-[--accent]/40 shadow-sm",
-  secondary: "bg-[--bg-elevated] text-[--text-primary] border border-[--border-secondary] hover:bg-[--bg-card-hover] focus:ring-[--accent]/30",
-  danger: "bg-[--danger] text-white hover:bg-[--danger-hover] focus:ring-[--danger]/40",
-  ghost: "text-[--text-secondary] hover:text-[--text-primary] hover:bg-[--bg-elevated]",
+  primary: "bg-accent text-white hover:bg-accent-hover focus:ring-accent/40 shadow-sm",
+  secondary: "bg-elevated text-heading border border-edge-alt hover:bg-card-hover focus:ring-accent/30",
+  danger: "bg-danger text-white hover:bg-danger-hover focus:ring-danger/40",
+  ghost: "text-body hover:text-heading hover:bg-elevated",
 };
 
 const sizes = {
@@ -30,7 +30,7 @@ export default function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[--bg-primary] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
       disabled={disabled || loading}
       {...props}
     >

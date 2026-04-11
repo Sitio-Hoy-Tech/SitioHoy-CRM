@@ -68,10 +68,10 @@ export default function AuditoriaPage() {
 
   function accionColor(a: string) {
     switch (a) {
-      case "CREATE": return "bg-[--accent-soft] text-[--accent] border border-[--accent-border]";
+      case "CREATE": return "bg-accent-soft text-accent border border-accent-border";
       case "UPDATE": return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
       case "DELETE": return "bg-red-500/15 text-red-400 border border-red-500/20";
-      default: return "bg-[--bg-elevated] text-[--text-muted]";
+      default: return "bg-elevated text-muted";
     }
   }
 
@@ -86,7 +86,7 @@ export default function AuditoriaPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold text-[--text-primary] mb-6">Auditoría</h1>
+      <h1 className="text-2xl font-bold text-heading mb-6">Auditoría</h1>
 
       {/* Inline filters */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -97,46 +97,46 @@ export default function AuditoriaPage() {
         <DatePicker placeholder="Hasta" value={fechaHasta} onChange={(val) => { setFechaHasta(val); setPage(1); }} />
       </div>
 
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[--border-primary]">
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Fecha</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Usuario</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Tabla</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Acción</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Registro</th>
-              <th className="text-right px-4 py-3 font-medium text-[--text-muted]">Detalle</th>
+            <tr className="border-b border-edge">
+              <th className="text-left px-4 py-3 font-medium text-muted">Fecha</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Usuario</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Tabla</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Acción</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Registro</th>
+              <th className="text-right px-4 py-3 font-medium text-muted">Detalle</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-8 text-[--text-muted]">Cargando...</td></tr>
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Cargando...</td></tr>
             ) : logs.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-8 text-[--text-muted]">Sin registros de auditoría</td></tr>
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Sin registros de auditoría</td></tr>
             ) : (
               logs.map((log) => (
-                <tr key={log.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
-                  <td className="px-4 py-3 text-[--text-secondary]">
+                <tr key={log.id} className="border-b border-edge hover:bg-elevated transition-colors">
+                  <td className="px-4 py-3 text-body">
                     {new Date(log.created_at).toLocaleString("es-AR", {
                       day: "2-digit", month: "2-digit", year: "2-digit",
                       hour: "2-digit", minute: "2-digit",
                     })}
                   </td>
-                  <td className="px-4 py-3 text-[--text-primary]">
+                  <td className="px-4 py-3 text-heading">
                     {log.usuario ? `${log.usuario.nombre} ${log.usuario.apellido}` : log.usuario_id}
                   </td>
-                  <td className="px-4 py-3 text-[--text-secondary]">{log.tabla_afectada}</td>
+                  <td className="px-4 py-3 text-body">{log.tabla_afectada}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${accionColor(log.accion)}`}>
                       {accionLabel(log.accion)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[--text-muted] font-mono text-xs">#{log.registro_id.slice(0, 4)}</td>
+                  <td className="px-4 py-3 text-muted font-mono text-xs">#{log.registro_id.slice(0, 4)}</td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
-                      className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                      className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
                     >
                       <svg className={`w-4 h-4 transition-transform ${expandedId === log.id ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -152,20 +152,20 @@ export default function AuditoriaPage() {
         {/* Expanded details rendered outside table for valid HTML */}
         {logs.map((log) => (
           expandedId === log.id && (
-            <div key={`${log.id}-detail`} className="border-t border-[--border-primary] bg-[--bg-elevated] px-4 py-4">
+            <div key={`${log.id}-detail`} className="border-t border-edge bg-elevated px-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 {log.cambios_anteriores && (
                   <div>
-                    <p className="text-xs font-semibold text-[--text-muted] mb-1">Antes</p>
-                    <pre className="text-xs bg-[--bg-card] border border-[--border-primary] rounded-lg p-3 overflow-auto max-h-48 text-[--text-secondary]">
+                    <p className="text-xs font-semibold text-muted mb-1">Antes</p>
+                    <pre className="text-xs bg-card border border-edge rounded-lg p-3 overflow-auto max-h-48 text-body">
                       {JSON.stringify(log.cambios_anteriores, null, 2)}
                     </pre>
                   </div>
                 )}
                 {log.cambios_nuevos && (
                   <div>
-                    <p className="text-xs font-semibold text-[--text-muted] mb-1">Después</p>
-                    <pre className="text-xs bg-[--bg-card] border border-[--border-primary] rounded-lg p-3 overflow-auto max-h-48 text-[--text-secondary]">
+                    <p className="text-xs font-semibold text-muted mb-1">Después</p>
+                    <pre className="text-xs bg-card border border-edge rounded-lg p-3 overflow-auto max-h-48 text-body">
                       {JSON.stringify(log.cambios_nuevos, null, 2)}
                     </pre>
                   </div>
@@ -176,8 +176,8 @@ export default function AuditoriaPage() {
         ))}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[--border-primary]">
-            <p className="text-sm text-[--text-muted]">Página {page} de {totalPages}</p>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-edge">
+            <p className="text-sm text-muted">Página {page} de {totalPages}</p>
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</Button>
               <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Siguiente</Button>

@@ -6,14 +6,14 @@ export default function CalendarioPage() {
   if (!CALENDLY_USERNAME) {
     return (
       <div className="animate-fade-in">
-        <h1 className="text-2xl font-bold text-[--text-primary] mb-4">Calendario</h1>
-        <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-12 text-center">
-          <svg className="w-12 h-12 text-[--text-muted] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <h1 className="text-2xl font-bold text-heading mb-4">Calendario</h1>
+        <div className="bg-card rounded-xl border border-edge p-12 text-center">
+          <svg className="w-12 h-12 text-muted mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <h2 className="text-lg font-semibold text-[--text-primary] mb-2">Calendly no configurado</h2>
-          <p className="text-sm text-[--text-muted] max-w-md mx-auto">
-            Configurá tu <code className="bg-[--bg-elevated] px-1 rounded">NEXT_PUBLIC_CALENDLY_USERNAME</code> en el archivo <code className="bg-[--bg-elevated] px-1 rounded">.env.local</code> para ver el calendario.
+          <h2 className="text-lg font-semibold text-heading mb-2">Calendly no configurado</h2>
+          <p className="text-sm text-muted max-w-md mx-auto">
+            Configurá tu <code className="bg-elevated px-1 rounded">NEXT_PUBLIC_CALENDLY_USERNAME</code> en el archivo <code className="bg-elevated px-1 rounded">.env.local</code> para ver el calendario.
           </p>
         </div>
       </div>
@@ -23,12 +23,12 @@ export default function CalendarioPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Calendario</h1>
+        <h1 className="text-2xl font-bold text-heading">Calendario</h1>
         <a
           href={`https://calendly.com/${CALENDLY_USERNAME}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-[--accent] rounded-lg hover:bg-[--accent-hover] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -37,7 +37,7 @@ export default function CalendarioPage() {
         </a>
       </div>
 
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <iframe
           src={`https://calendly.com/${CALENDLY_USERNAME}?hide_landing_page_details=1&hide_gdpr_banner=1`}
           className="w-full border-0"

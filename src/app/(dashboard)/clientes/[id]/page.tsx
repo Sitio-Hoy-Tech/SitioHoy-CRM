@@ -102,8 +102,8 @@ export default function ClienteDetallePage() {
     setToast({ message: "Cliente actualizado", type: "success" });
   }
 
-  if (loading) return <div className="text-[--text-muted] py-12 text-center">Cargando...</div>;
-  if (!cliente) return <div className="text-[--text-muted] py-12 text-center">Cliente no encontrado</div>;
+  if (loading) return <div className="text-muted py-12 text-center">Cargando...</div>;
+  if (!cliente) return <div className="text-muted py-12 text-center">Cliente no encontrado</div>;
 
   function diasParaVencer() {
     if (!cliente?.fecha_vencimiento) return null;
@@ -117,13 +117,13 @@ export default function ClienteDetallePage() {
   return (
     <div className="max-w-3xl animate-fade-in">
       <div className="mb-6">
-        <button onClick={() => router.push("/clientes")} className="text-sm text-[--text-muted] hover:text-[--text-primary] mb-2 inline-block transition-colors">
+        <button onClick={() => router.push("/clientes")} className="text-sm text-muted hover:text-heading mb-2 inline-block transition-colors">
           &larr; Volver a clientes
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[--text-primary]">{cliente.nombre_empresa}</h1>
-            <p className="text-sm text-[--text-muted]">{cliente.dominio} &middot; Tenant: {cliente.tenant_id}</p>
+            <h1 className="text-2xl font-bold text-heading">{cliente.nombre_empresa}</h1>
+            <p className="text-sm text-muted">{cliente.dominio} &middot; Tenant: {cliente.tenant_id}</p>
           </div>
           <div className="flex gap-2">
             {!editing && <Button onClick={startEditing}>Editar</Button>}
@@ -132,7 +132,7 @@ export default function ClienteDetallePage() {
       </div>
 
       {editing ? (
-        <form onSubmit={handleSave} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+        <form onSubmit={handleSave} className="bg-card rounded-xl border border-edge p-6 space-y-5">
           <Input label="Nombre de la empresa" required value={form.nombre_empresa} onChange={(e) => updateField("nombre_empresa", e.target.value)} />
           <SearchableSelect
             label="Contacto" required
@@ -169,12 +169,12 @@ export default function ClienteDetallePage() {
         </form>
       ) : (
         <div className="space-y-6">
-          <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6">
+          <div className="bg-card rounded-xl border border-edge p-6">
             <div className="flex items-center gap-3 mb-4">
               <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 cliente.estado
-                  ? "bg-[--accent-soft] text-[--accent] border border-[--accent-border]"
-                  : "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]"
+                  ? "bg-accent-soft text-accent border border-accent-border"
+                  : "bg-elevated text-muted border border-edge"
               }`}>
                 {cliente.estado ? "Activo" : "Inactivo"}
               </span>
@@ -182,7 +182,7 @@ export default function ClienteDetallePage() {
                 <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   dias <= 0 ? "bg-red-500/15 text-red-400 border border-red-500/20"
                   : dias <= 7 ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20"
-                  : "bg-[--accent-soft] text-[--accent] border border-[--accent-border]"
+                  : "bg-accent-soft text-accent border border-accent-border"
                 }`}>
                   {dias <= 0 ? "Vencido" : `Vence en ${dias} días`}
                 </span>
@@ -190,40 +190,40 @@ export default function ClienteDetallePage() {
             </div>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
               <div>
-                <dt className="text-sm text-[--text-muted]">Empresa</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">{cliente.nombre_empresa}</dd>
+                <dt className="text-sm text-muted">Empresa</dt>
+                <dd className="text-sm font-medium text-heading">{cliente.nombre_empresa}</dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Dominio</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">{cliente.dominio}</dd>
+                <dt className="text-sm text-muted">Dominio</dt>
+                <dd className="text-sm font-medium text-heading">{cliente.dominio}</dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Plan</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">
+                <dt className="text-sm text-muted">Plan</dt>
+                <dd className="text-sm font-medium text-heading">
                   {cliente.plan?.nombre} - ${Number(cliente.plan?.precio || 0).toLocaleString("es-AR")}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Plantilla</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">{cliente.plantilla?.nombre || "-"}</dd>
+                <dt className="text-sm text-muted">Plantilla</dt>
+                <dd className="text-sm font-medium text-heading">{cliente.plantilla?.nombre || "-"}</dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Etiqueta de negocio</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">{cliente.etiqueta_negocio?.nombre || "-"}</dd>
+                <dt className="text-sm text-muted">Etiqueta de negocio</dt>
+                <dd className="text-sm font-medium text-heading">{cliente.etiqueta_negocio?.nombre || "-"}</dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Tenant ID</dt>
-                <dd className="text-sm font-mono text-[--text-secondary]">{cliente.tenant_id}</dd>
+                <dt className="text-sm text-muted">Tenant ID</dt>
+                <dd className="text-sm font-mono text-body">{cliente.tenant_id}</dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Fecha de pago</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">
+                <dt className="text-sm text-muted">Fecha de pago</dt>
+                <dd className="text-sm font-medium text-heading">
                   {new Date(cliente.fecha_pago).toLocaleDateString("es-AR")}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-[--text-muted]">Fecha de vencimiento</dt>
-                <dd className="text-sm font-medium text-[--text-primary]">
+                <dt className="text-sm text-muted">Fecha de vencimiento</dt>
+                <dd className="text-sm font-medium text-heading">
                   {cliente.fecha_vencimiento ? new Date(cliente.fecha_vencimiento).toLocaleDateString("es-AR") : "-"}
                 </dd>
               </div>
@@ -231,34 +231,34 @@ export default function ClienteDetallePage() {
           </div>
 
           {cliente.contacto && (
-            <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6">
-              <h2 className="text-sm font-semibold text-[--text-primary] mb-3">Contacto vinculado</h2>
+            <div className="bg-card rounded-xl border border-edge p-6">
+              <h2 className="text-sm font-semibold text-heading mb-3">Contacto vinculado</h2>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
-                  <dt className="text-sm text-[--text-muted]">Nombre</dt>
+                  <dt className="text-sm text-muted">Nombre</dt>
                   <dd className="text-sm font-medium">
-                    <Link href={`/contactos/${cliente.contacto.id}`} className="text-[--accent] hover:underline">
+                    <Link href={`/contactos/${cliente.contacto.id}`} className="text-accent hover:underline">
                       {cliente.contacto.nombre} {cliente.contacto.apellido || ""}
                     </Link>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-[--text-muted]">Email</dt>
-                  <dd className="text-sm text-[--text-primary]">{cliente.contacto.email || "-"}</dd>
+                  <dt className="text-sm text-muted">Email</dt>
+                  <dd className="text-sm text-heading">{cliente.contacto.email || "-"}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-[--text-muted]">Teléfono</dt>
-                  <dd className="text-sm text-[--text-primary]">{cliente.contacto.telefono || "-"}</dd>
+                  <dt className="text-sm text-muted">Teléfono</dt>
+                  <dd className="text-sm text-heading">{cliente.contacto.telefono || "-"}</dd>
                 </div>
               </dl>
             </div>
           )}
 
           {cliente.plan && (
-            <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6">
-              <h2 className="text-sm font-semibold text-[--text-primary] mb-3">Plan: {cliente.plan.nombre}</h2>
-              <p className="text-sm text-[--text-secondary] whitespace-pre-wrap">{cliente.plan.beneficios}</p>
-              <p className="text-lg font-bold text-[--accent] mt-3">${Number(cliente.plan.precio).toLocaleString("es-AR")}/mes</p>
+            <div className="bg-card rounded-xl border border-edge p-6">
+              <h2 className="text-sm font-semibold text-heading mb-3">Plan: {cliente.plan.nombre}</h2>
+              <p className="text-sm text-body whitespace-pre-wrap">{cliente.plan.beneficios}</p>
+              <p className="text-lg font-bold text-accent mt-3">${Number(cliente.plan.precio).toLocaleString("es-AR")}/mes</p>
             </div>
           )}
         </div>

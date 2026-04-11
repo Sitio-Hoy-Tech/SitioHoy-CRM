@@ -34,29 +34,29 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[--bg-primary] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-surface relative overflow-hidden">
       {/* Background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[--accent] opacity-[0.04] rounded-full blur-3xl" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-accent opacity-[0.04] rounded-full blur-3xl" />
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
-        <div className="bg-[--bg-card] rounded-2xl border border-[--border-primary] p-10 shadow-lg">
+        <div className="bg-card rounded-2xl border border-edge p-10 shadow-lg">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[--accent] flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4 shadow-lg">
               <span className="text-white font-bold text-2xl">S</span>
             </div>
-            <h1 className="text-2xl font-bold text-[--text-primary]">SitioHoy CRM</h1>
-            <p className="text-[--text-muted] mt-2 text-sm">Ingresá a tu panel de administración</p>
+            <h1 className="text-2xl font-bold text-heading">SitioHoy CRM</h1>
+            <p className="text-muted mt-2 text-sm">Ingresá a tu panel de administración</p>
           </div>
 
           {error && (
-            <div className="bg-[--danger-soft] text-[--danger] text-sm rounded-xl p-3.5 text-center border border-red-500/20 mb-5">
+            <div className="bg-danger-soft text-danger text-sm rounded-xl p-3.5 text-center border border-red-500/20 mb-5">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[--text-primary] mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-heading mb-1.5">
                 Email
               </label>
               <input
@@ -64,14 +64,14 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[--bg-input] border border-[--border-primary] rounded-lg px-4 py-2.5 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+                className="w-full bg-input border border-edge rounded-lg px-4 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                 placeholder="tu@email.com"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[--text-primary] mb-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-heading mb-1.5">
                 Contraseña
               </label>
               <input
@@ -79,7 +79,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[--bg-input] border border-[--border-primary] rounded-lg px-4 py-2.5 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+                className="w-full bg-input border border-edge rounded-lg px-4 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                 placeholder="••••••••"
                 required
               />
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[--accent] text-white font-medium rounded-lg px-4 py-3 hover:bg-[--accent-hover] focus:outline-none focus:ring-2 focus:ring-[--accent]/40 focus:ring-offset-2 focus:ring-offset-[--bg-card] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-base"
+              className="w-full bg-accent text-white font-medium rounded-lg px-4 py-3 hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent/40 focus:ring-offset-2 focus:ring-offset-card disabled:opacity-40 disabled:cursor-not-allowed transition-all text-base"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>

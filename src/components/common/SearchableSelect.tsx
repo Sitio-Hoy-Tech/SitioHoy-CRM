@@ -118,9 +118,9 @@ export default function SearchableSelect({
   return (
     <div>
       {label && (
-        <label className="block text-sm font-medium text-[--text-secondary] mb-1.5">
+        <label className="block text-sm font-medium text-body mb-1.5">
           {label}
-          {required && <span className="text-[--accent] ml-0.5">*</span>}
+          {required && <span className="text-accent ml-0.5">*</span>}
         </label>
       )}
       <Component
@@ -136,7 +136,7 @@ export default function SearchableSelect({
         onCreateOption={onCreateOption}
         menuPlacement="auto"
       />
-      {error && <p className="text-[--danger] text-xs mt-1.5">{error}</p>}
+      {error && <p className="text-danger text-xs mt-1.5">{error}</p>}
     </div>
   );
 }

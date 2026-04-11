@@ -11,10 +11,10 @@ import type { Usuario } from "@/types";
 
 function rolColor(rol: string) {
   switch (rol) {
-    case "admin": return "bg-[--accent-soft] text-[--accent] border border-[--accent-border]";
+    case "admin": return "bg-accent-soft text-accent border border-accent-border";
     case "sales": return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
     case "manager": return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
-    default: return "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]";
+    default: return "bg-elevated text-muted border border-edge";
   }
 }
 
@@ -100,13 +100,13 @@ export default function UsuariosPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[--text-primary]">Usuarios</h1>
+        <h1 className="text-2xl font-bold text-heading">Usuarios</h1>
         <Button onClick={() => setShowCreate(true)}>+ Nuevo usuario</Button>
       </div>
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 mb-6 space-y-4">
-          <h2 className="text-sm font-semibold text-[--text-primary]">Crear usuario</h2>
+        <form onSubmit={handleCreate} className="bg-card rounded-xl border border-edge p-6 mb-6 space-y-4">
+          <h2 className="text-sm font-semibold text-heading">Crear usuario</h2>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Nombre" required value={form.nombre} onChange={(e) => setForm(f => ({ ...f, nombre: e.target.value }))} />
             <Input label="Apellido" required value={form.apellido} onChange={(e) => setForm(f => ({ ...f, apellido: e.target.value }))} />
@@ -132,33 +132,33 @@ export default function UsuariosPage() {
         </form>
       )}
 
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
+      <div className="bg-card rounded-xl border border-edge overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[--border-primary]">
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Email</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Rol</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Estado</th>
-              <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Creado</th>
-              <th className="text-right px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
+            <tr className="border-b border-edge">
+              <th className="text-left px-4 py-3 font-medium text-muted">Nombre</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Email</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Rol</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Estado</th>
+              <th className="text-left px-4 py-3 font-medium text-muted">Creado</th>
+              <th className="text-right px-4 py-3 font-medium text-muted">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-8 text-[--text-muted]">Cargando...</td></tr>
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Cargando...</td></tr>
             ) : usuarios.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-8 text-[--text-muted]">Sin usuarios</td></tr>
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Sin usuarios</td></tr>
             ) : (
               usuarios.map((u) => {
                 const isMe = session?.user?.id === u.id;
                 return (
-                  <tr key={u.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
-                    <td className="px-4 py-3 font-medium text-[--text-primary]">
+                  <tr key={u.id} className="border-b border-edge hover:bg-elevated transition-colors">
+                    <td className="px-4 py-3 font-medium text-heading">
                       {u.nombre} {u.apellido}
-                      {isMe && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[--accent-soft] text-[--accent] border border-[--accent-border]">vos</span>}
+                      {isMe && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-soft text-accent border border-accent-border">vos</span>}
                     </td>
-                    <td className="px-4 py-3 text-[--text-secondary]">{u.email}</td>
+                    <td className="px-4 py-3 text-body">{u.email}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${rolColor(u.rol)}`}>
                         {rolLabel(u.rol)}
@@ -167,33 +167,33 @@ export default function UsuariosPage() {
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         u.estado
-                          ? "bg-[--accent-soft] text-[--accent] border border-[--accent-border]"
-                          : "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]"
+                          ? "bg-accent-soft text-accent border border-accent-border"
+                          : "bg-elevated text-muted border border-edge"
                       }`}>
                         {u.estado ? "Activo" : "Inactivo"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[--text-muted]">
+                    <td className="px-4 py-3 text-muted">
                       {new Date(u.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isMe ? (
-                        <span className="text-[--text-muted] text-sm">—</span>
+                        <span className="text-muted text-sm">—</span>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => toggleEstado(u.id, u.estado)}
                             className={`px-3 py-1 text-xs font-medium rounded-md border transition-colors ${
                               u.estado
-                                ? "text-[--danger] border-red-500/20 hover:bg-[--danger-soft]"
-                                : "text-[--accent] border-[--accent-border] hover:bg-[--accent-soft]"
+                                ? "text-danger border-red-500/20 hover:bg-danger-soft"
+                                : "text-accent border-accent-border hover:bg-accent-soft"
                             }`}
                           >
                             {u.estado ? "Desactivar" : "Activar"}
                           </button>
                           <button
                             onClick={() => setDeleteId(u.id)}
-                            className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                            className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                             title="Eliminar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +212,7 @@ export default function UsuariosPage() {
       </div>
 
       <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar usuario">
-        <p className="text-sm text-[--text-secondary] mb-4">¿Estás seguro? El usuario no podrá acceder más al CRM.</p>
+        <p className="text-sm text-body mb-4">¿Estás seguro? El usuario no podrá acceder más al CRM.</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>

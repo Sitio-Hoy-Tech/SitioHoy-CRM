@@ -127,11 +127,11 @@ export default function ContactoDetallePage() {
   }
 
   if (loading) {
-    return <div className="text-[--text-muted] py-12 text-center">Cargando...</div>;
+    return <div className="text-muted py-12 text-center">Cargando...</div>;
   }
 
   if (!contacto) {
-    return <div className="text-[--text-muted] py-12 text-center">Contacto no encontrado</div>;
+    return <div className="text-muted py-12 text-center">Contacto no encontrado</div>;
   }
 
   return (
@@ -139,12 +139,12 @@ export default function ContactoDetallePage() {
       <div className="mb-6">
         <button
           onClick={() => router.push("/contactos")}
-          className="text-sm text-[--text-muted] hover:text-[--text-primary] mb-2 inline-block transition-colors"
+          className="text-sm text-muted hover:text-heading mb-2 inline-block transition-colors"
         >
           &larr; Volver a contactos
         </button>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-[--text-primary]">
+          <h1 className="text-2xl font-bold text-heading">
             {contacto.nombre} {contacto.apellido}
           </h1>
           <div className="flex gap-2">
@@ -159,7 +159,7 @@ export default function ContactoDetallePage() {
       </div>
 
       {editing ? (
-        <form onSubmit={handleSave} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
+        <form onSubmit={handleSave} className="bg-card rounded-xl border border-edge p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Input label="Nombre" required value={form.nombre} onChange={(e) => updateField("nombre", e.target.value)} />
             <Input label="Apellido" value={form.apellido} onChange={(e) => updateField("apellido", e.target.value)} />
@@ -199,52 +199,52 @@ export default function ContactoDetallePage() {
           </div>
         </form>
       ) : (
-        <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6">
+        <div className="bg-card rounded-xl border border-edge p-6">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
             <div>
-              <dt className="text-sm text-[--text-muted]">Nombre completo</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">{contacto.nombre} {contacto.apellido}</dd>
+              <dt className="text-sm text-muted">Nombre completo</dt>
+              <dd className="text-sm font-medium text-heading">{contacto.nombre} {contacto.apellido}</dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Email</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">{contacto.email || "-"}</dd>
+              <dt className="text-sm text-muted">Email</dt>
+              <dd className="text-sm font-medium text-heading">{contacto.email || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Teléfono</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">{contacto.telefono || "-"}</dd>
+              <dt className="text-sm text-muted">Teléfono</dt>
+              <dd className="text-sm font-medium text-heading">{contacto.telefono || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Estado</dt>
+              <dt className="text-sm text-muted">Estado</dt>
               <dd>
-                <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-[--accent-soft] text-[--accent] border border-[--accent-border]">
+                <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-soft text-accent border border-accent-border">
                   {contacto.estado?.nombre}
                 </span>
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Etiqueta de negocio</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">{contacto.etiqueta_negocio?.nombre || "-"}</dd>
+              <dt className="text-sm text-muted">Etiqueta de negocio</dt>
+              <dd className="text-sm font-medium text-heading">{contacto.etiqueta_negocio?.nombre || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Origen</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">{contacto.origen}</dd>
+              <dt className="text-sm text-muted">Origen</dt>
+              <dd className="text-sm font-medium text-heading">{contacto.origen}</dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Fecha de contacto</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">
+              <dt className="text-sm text-muted">Fecha de contacto</dt>
+              <dd className="text-sm font-medium text-heading">
                 {new Date(contacto.fecha_contacto).toLocaleDateString("es-AR")}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-[--text-muted]">Creado por</dt>
-              <dd className="text-sm font-medium text-[--text-primary]">
+              <dt className="text-sm text-muted">Creado por</dt>
+              <dd className="text-sm font-medium text-heading">
                 {contacto.usuario_creador ? `${contacto.usuario_creador.nombre} ${contacto.usuario_creador.apellido}` : "-"}
               </dd>
             </div>
             {contacto.notas && (
               <div className="col-span-2">
-                <dt className="text-sm text-[--text-muted]">Notas</dt>
-                <dd className="text-sm text-[--text-primary] mt-1 whitespace-pre-wrap">{contacto.notas}</dd>
+                <dt className="text-sm text-muted">Notas</dt>
+                <dd className="text-sm text-heading mt-1 whitespace-pre-wrap">{contacto.notas}</dd>
               </div>
             )}
           </dl>

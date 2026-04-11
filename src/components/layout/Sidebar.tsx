@@ -29,13 +29,13 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 bg-[--bg-secondary] border-r border-[--border-primary] min-h-screen flex flex-col">
+    <aside className="w-60 bg-surface-alt border-r border-edge min-h-screen flex flex-col">
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[--accent] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <span className="text-white font-bold text-sm">S</span>
           </div>
-          <h1 className="text-base font-bold text-[--text-primary]">SitioHoy CRM</h1>
+          <h1 className="text-base font-bold text-heading">SitioHoy CRM</h1>
         </div>
       </div>
 
@@ -59,12 +59,12 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${
                   isActive || isCatalogActive
-                    ? "bg-[--accent]/10 text-[--accent]"
-                    : "text-[--text-secondary] hover:bg-[--bg-elevated] hover:text-[--text-primary]"
+                    ? "bg-accent/10 text-accent"
+                    : "text-body hover:bg-elevated hover:text-heading"
                 }`}
               >
                 {(isActive || isCatalogActive) && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[--accent]" />
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
                 )}
                 <svg
                   className="w-[18px] h-[18px] flex-shrink-0"
@@ -91,8 +91,8 @@ export default function Sidebar() {
                       className={`block px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${
                         pathname === child.href ||
                         pathname.startsWith(child.href + "/")
-                          ? "text-[--accent] font-medium"
-                          : "text-[--text-muted] hover:text-[--text-primary]"
+                          ? "text-accent font-medium"
+                          : "text-muted hover:text-heading"
                       }`}
                     >
                       {child.name}

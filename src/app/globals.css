@@ -51,6 +51,27 @@
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-accent: #10b981;
+  --color-accent-hover: #059669;
+  --color-accent-soft: #10b98119;
+  --color-accent-border: #10b9814d;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-danger-soft: #ef444419;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #f59e0b19;
+  --color-surface: #0B1120;
+  --color-surface-alt: #111827;
+  --color-card: #1a2332;
+  --color-card-hover: #1f2a3d;
+  --color-input: #0f1729;
+  --color-elevated: #243044;
+  --color-edge: #1e2d3d;
+  --color-edge-alt: #2a3a4e;
+  --color-edge-focus: #10b981;
+  --color-heading: #f1f5f9;
+  --color-body: #94a3b8;
+  --color-muted: #64748b;
 }
 
 * {
