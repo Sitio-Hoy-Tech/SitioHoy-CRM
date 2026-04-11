@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/valenordu/Desktop/**)",
+      "Bash(npx create-next-app@latest crm-sitiohoy-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(cp -r crm-sitiohoy-temp/* crm-sitiohoy/)",
+      "Bash(cp -r crm-sitiohoy-temp/.gitignore crm-sitiohoy/)",
+      "Bash(cp -r crm-sitiohoy-temp/.git crm-sitiohoy/)",
+      "Bash(rm -rf crm-sitiohoy-temp)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
