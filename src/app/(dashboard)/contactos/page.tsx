@@ -22,7 +22,7 @@ export default function ContactosPage() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const limit = 50;
+  const limit = 10;
 
   const [search, setSearch] = useState("");
   const [estadoId, setEstadoId] = useState("");
@@ -80,67 +80,59 @@ export default function ContactosPage() {
   }
 
   const totalPages = Math.ceil(count / limit);
+  const from = (page - 1) * limit + 1;
+  const to = Math.min(page * limit, count);
 
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[--text-primary]">Contactos</h1>
-          <p className="text-sm text-[--text-muted] mt-1">{count} contactos en total</p>
-        </div>
+        <h1 className="text-2xl font-bold text-[--text-primary]">Contactos</h1>
         <Link href="/contactos/nuevo">
           <Button>+ Nuevo contacto</Button>
         </Link>
       </div>
 
       {/* Filtros */}
-      <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Input
-            placeholder="Buscar por nombre, email..."
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[--text-muted]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            placeholder="Buscar..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
-          <Select
-            options={estados.map(e => ({ value: e.id, label: e.nombre }))}
-            placeholder="Estado"
-            value={estadoId}
-            onChange={(e) => { setEstadoId(e.target.value); setPage(1); }}
-          />
-          <Select
-            options={etiquetas.map(e => ({ value: e.id, label: e.nombre }))}
-            placeholder="Etiqueta"
-            value={etiquetaId}
-            onChange={(e) => { setEtiquetaId(e.target.value); setPage(1); }}
-          />
-          <Select
-            options={ORIGENES.slice(1)}
-            placeholder="Origen"
-            value={origen}
-            onChange={(e) => { setOrigen(e.target.value); setPage(1); }}
-          />
-          <DatePicker
-            placeholder="Desde"
-            value={fechaDesde}
-            onChange={(val) => { setFechaDesde(val); setPage(1); }}
-          />
-          <DatePicker
-            placeholder="Hasta"
-            value={fechaHasta}
-            onChange={(val) => { setFechaHasta(val); setPage(1); }}
+            className="w-48 bg-[--bg-input] border border-[--border-primary] rounded-lg pl-9 pr-3.5 py-2 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
           />
         </div>
-        {(search || estadoId || etiquetaId || origen || fechaDesde || fechaHasta) && (
-          <button
-            onClick={() => {
-              setSearch(""); setEstadoId(""); setEtiquetaId("");
-              setOrigen(""); setFechaDesde(""); setFechaHasta(""); setPage(1);
-            }}
-            className="mt-2 text-sm text-[--accent] hover:underline"
-          >
-            Limpiar filtros
-          </button>
-        )}
+        <Select
+          options={estados.map(e => ({ value: e.id, label: e.nombre }))}
+          placeholder="Estado"
+          value={estadoId}
+          onChange={(e) => { setEstadoId(e.target.value); setPage(1); }}
+        />
+        <Select
+          options={etiquetas.map(e => ({ value: e.id, label: e.nombre }))}
+          placeholder="Etiqueta"
+          value={etiquetaId}
+          onChange={(e) => { setEtiquetaId(e.target.value); setPage(1); }}
+        />
+        <Select
+          options={ORIGENES.slice(1)}
+          placeholder="Origen"
+          value={origen}
+          onChange={(e) => { setOrigen(e.target.value); setPage(1); }}
+        />
+        <DatePicker
+          placeholder="Desde"
+          value={fechaDesde}
+          onChange={(val) => { setFechaDesde(val); setPage(1); }}
+        />
+        <DatePicker
+          placeholder="Hasta"
+          value={fechaHasta}
+          onChange={(val) => { setFechaHasta(val); setPage(1); }}
+        />
       </div>
 
       {/* Tabla */}
@@ -148,15 +140,15 @@ export default function ContactosPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[--border-primary] bg-[--bg-secondary]">
+              <tr className="border-b border-[--border-primary]">
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Email</th>
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Teléfono</th>
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Estado</th>
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Etiqueta</th>
                 <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Origen</th>
-                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Fecha contacto</th>
-                <th className="text-right px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
+                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Fecha</th>
+                <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -172,8 +164,7 @@ export default function ContactosPage() {
                 contactos.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-[--border-primary] hover:bg-[--bg-elevated] cursor-pointer transition-colors"
-                    onClick={() => router.push(`/contactos/${c.id}`)}
+                    className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-[--text-primary]">
                       {c.nombre} {c.apellido}
@@ -181,31 +172,45 @@ export default function ContactosPage() {
                     <td className="px-4 py-3 text-[--text-secondary]">{c.email || "-"}</td>
                     <td className="px-4 py-3 text-[--text-secondary]">{c.telefono || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[--accent-soft] text-[--accent] border border-[--accent-border]">
+                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-[--accent-soft] text-[--accent] border border-[--accent-border]">
                         {c.estado?.nombre}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[--text-secondary]">{c.etiqueta_negocio?.nombre || "-"}</td>
                     <td className="px-4 py-3 text-[--text-secondary]">{c.origen}</td>
                     <td className="px-4 py-3 text-[--text-secondary]">
-                      {new Date(c.fecha_contacto).toLocaleDateString("es-AR")}
+                      {new Date(c.fecha_contacto).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Link href={`/contactos/${c.id}`}>
-                          <Button variant="ghost" size="sm">Ver</Button>
-                        </Link>
-                        <Link href={`/contactos/${c.id}/seguimiento`}>
-                          <Button variant="ghost" size="sm">Seguimiento</Button>
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteId(c.id)}
-                          className="!text-[--danger] hover:!text-[--danger]"
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => router.push(`/contactos/${c.id}`)}
+                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                          title="Ver detalle"
                         >
-                          Eliminar
-                        </Button>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => router.push(`/contactos/${c.id}/seguimiento`)}
+                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                          title="Seguimiento"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(c.id)}
+                          className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                          title="Eliminar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -215,26 +220,49 @@ export default function ContactosPage() {
           </table>
         </div>
 
-        {totalPages > 1 && (
+        {count > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[--border-primary]">
             <p className="text-sm text-[--text-muted]">
-              Página {page} de {totalPages}
+              Mostrando {from}-{to} de {count} contactos
             </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                Anterior
-              </Button>
-              <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Siguiente
-              </Button>
-            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                      page === p
+                        ? "bg-[--accent] text-white"
+                        : "text-[--text-muted] hover:bg-[--bg-elevated]"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-2 py-1 text-sm text-[--text-muted] hover:text-[--text-primary] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar contacto">
+      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
         <p className="text-sm text-[--text-secondary] mb-4">
-          ¿Estás seguro de que querés eliminar este contacto? Esta acción no se puede deshacer.
+          ¿Estás seguro de que querés eliminar este registro? Esta acción no se puede deshacer.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>

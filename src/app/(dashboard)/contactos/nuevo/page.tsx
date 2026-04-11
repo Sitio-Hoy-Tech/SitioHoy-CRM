@@ -101,15 +101,9 @@ export default function NuevoContactoPage() {
   }
 
   return (
-    <div className="max-w-2xl animate-fade-in">
+    <div className="max-w-4xl animate-fade-in">
       <div className="mb-6">
-        <button
-          onClick={() => router.back()}
-          className="text-sm text-[--text-muted] hover:text-[--text-primary] mb-2 inline-block transition-colors"
-        >
-          &larr; Volver a contactos
-        </button>
-        <h1 className="text-2xl font-bold text-[--text-primary]">Nuevo contacto</h1>
+        <h1 className="text-2xl font-bold text-[--text-primary]">Nuevo Contacto</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
@@ -196,7 +190,7 @@ export default function NuevoContactoPage() {
             Cancelar
           </Button>
           <Button type="submit" loading={loading}>
-            Crear contacto
+            Crear Contacto
           </Button>
         </div>
       </form>

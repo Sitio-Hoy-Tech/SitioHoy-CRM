@@ -9,6 +9,24 @@ import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import type { Usuario } from "@/types";
 
+function rolColor(rol: string) {
+  switch (rol) {
+    case "admin": return "bg-[--accent-soft] text-[--accent] border border-[--accent-border]";
+    case "sales": return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
+    case "manager": return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
+    default: return "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]";
+  }
+}
+
+function rolLabel(rol: string) {
+  switch (rol) {
+    case "admin": return "Admin";
+    case "sales": return "Editor";
+    case "manager": return "Viewer";
+    default: return rol;
+  }
+}
+
 export default function UsuariosPage() {
   const { data: session } = useSession();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -82,10 +100,7 @@ export default function UsuariosPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[--text-primary]">Usuarios</h1>
-          <p className="text-sm text-[--text-muted] mt-1">{usuarios.length} usuarios</p>
-        </div>
+        <h1 className="text-2xl font-bold text-[--text-primary]">Usuarios</h1>
         <Button onClick={() => setShowCreate(true)}>+ Nuevo usuario</Button>
       </div>
 
@@ -120,7 +135,7 @@ export default function UsuariosPage() {
       <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[--border-primary] bg-[--bg-secondary]">
+            <tr className="border-b border-[--border-primary]">
               <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
               <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Email</th>
               <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Rol</th>
@@ -141,16 +156,16 @@ export default function UsuariosPage() {
                   <tr key={u.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
                     <td className="px-4 py-3 font-medium text-[--text-primary]">
                       {u.nombre} {u.apellido}
-                      {isMe && <span className="ml-2 text-xs text-[--accent]">(vos)</span>}
+                      {isMe && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[--accent-soft] text-[--accent] border border-[--accent-border]">vos</span>}
                     </td>
                     <td className="px-4 py-3 text-[--text-secondary]">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[--accent-soft] text-[--accent] border border-[--accent-border]">
-                        {u.rol}
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${rolColor(u.rol)}`}>
+                        {rolLabel(u.rol)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         u.estado
                           ? "bg-[--accent-soft] text-[--accent] border border-[--accent-border]"
                           : "bg-[--bg-elevated] text-[--text-muted] border border-[--border-primary]"
@@ -159,19 +174,34 @@ export default function UsuariosPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[--text-muted]">
-                      {new Date(u.created_at).toLocaleDateString("es-AR")}
+                      {new Date(u.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => toggleEstado(u.id, u.estado)} disabled={isMe}>
-                          {u.estado ? "Desactivar" : "Activar"}
-                        </Button>
-                        {!isMe && (
-                          <Button variant="ghost" size="sm" onClick={() => setDeleteId(u.id)} className="!text-[--danger] hover:!text-[--danger]">
-                            Eliminar
-                          </Button>
-                        )}
-                      </div>
+                      {isMe ? (
+                        <span className="text-[--text-muted] text-sm">—</span>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => toggleEstado(u.id, u.estado)}
+                            className={`px-3 py-1 text-xs font-medium rounded-md border transition-colors ${
+                              u.estado
+                                ? "text-[--danger] border-red-500/20 hover:bg-[--danger-soft]"
+                                : "text-[--accent] border-[--accent-border] hover:bg-[--accent-soft]"
+                            }`}
+                          >
+                            {u.estado ? "Desactivar" : "Activar"}
+                          </button>
+                          <button
+                            onClick={() => setDeleteId(u.id)}
+                            className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                            title="Eliminar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

@@ -22,7 +22,6 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const [showCreate, setShowCreate] = useState(false);
   const [nombre, setNombre] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +54,6 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
     setSaving(false);
     if (res.ok) {
       setNombre("");
-      setShowCreate(false);
       setToast({ message: "Creado correctamente", type: "success" });
       fetchItems();
     } else {
@@ -100,28 +98,24 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[--text-primary]">{title}</h1>
-          <p className="text-sm text-[--text-muted] mt-1">{items.length} registros</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>+ Nuevo</Button>
-      </div>
+      <h1 className="text-2xl font-bold text-[--text-primary] mb-6">Catálogos &gt; {title}</h1>
 
-      {showCreate && (
-        <form onSubmit={handleCreate} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-4 mb-4 flex gap-3 items-end">
-          <div className="flex-1">
-            <Input label="Nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre..." />
-          </div>
-          <Button type="submit" loading={saving}>Crear</Button>
-          <Button variant="secondary" type="button" onClick={() => { setShowCreate(false); setNombre(""); }}>Cancelar</Button>
-        </form>
-      )}
+      {/* Inline create */}
+      <form onSubmit={handleCreate} className="flex items-center gap-3 mb-6">
+        <input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre del estado..."
+          required
+          className="flex-1 bg-[--bg-input] border border-[--border-primary] rounded-lg px-3.5 py-2.5 text-sm text-[--text-primary] placeholder:text-[--text-muted] focus:outline-none focus:ring-2 focus:ring-[--accent]/30 focus:border-[--accent] transition-all"
+        />
+        <Button type="submit" loading={saving}>+ Agregar</Button>
+      </form>
 
       <div className="bg-[--bg-card] rounded-xl border border-[--border-primary] overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[--border-primary] bg-[--bg-secondary]">
+            <tr className="border-b border-[--border-primary]">
               <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Nombre</th>
               <th className="text-left px-4 py-3 font-medium text-[--text-muted]">Creado</th>
               <th className="text-right px-4 py-3 font-medium text-[--text-muted]">Acciones</th>
@@ -137,16 +131,28 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
                 <tr key={item.id} className="border-b border-[--border-primary] hover:bg-[--bg-elevated] transition-colors">
                   <td className="px-4 py-3 font-medium text-[--text-primary]">{item.nombre}</td>
                   <td className="px-4 py-3 text-[--text-muted]">
-                    {new Date(item.created_at).toLocaleDateString("es-AR")}
+                    {new Date(item.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => { setEditId(item.id); setEditNombre(item.nombre); }}>
-                        Editar
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDeleteId(item.id)} className="!text-[--danger] hover:!text-[--danger]">
-                        Eliminar
-                      </Button>
+                      <button
+                        onClick={() => { setEditId(item.id); setEditNombre(item.nombre); }}
+                        className="p-1.5 rounded-md text-[--text-muted] hover:text-[--text-primary] hover:bg-[--bg-elevated] transition-colors"
+                        title="Editar"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(item.id)}
+                        className="p-1.5 rounded-md text-[--text-muted] hover:text-[--danger] hover:bg-[--danger-soft] transition-colors"
+                        title="Eliminar"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -166,7 +172,7 @@ export default function CatalogoCRUD({ title, apiUrl }: CatalogoCRUDProps) {
         </form>
       </Modal>
 
-      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar">
+      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
         <p className="text-sm text-[--text-secondary] mb-4">¿Estás seguro? Esta acción no se puede deshacer.</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>

@@ -66,12 +66,9 @@ export default function NuevaPlantillaPage() {
   }
 
   return (
-    <div className="max-w-2xl animate-fade-in">
+    <div className="max-w-2xl mx-auto animate-fade-in">
       <div className="mb-6">
-        <button onClick={() => router.back()} className="text-sm text-[--text-muted] hover:text-[--text-primary] mb-2 inline-block transition-colors">
-          &larr; Volver a plantillas
-        </button>
-        <h1 className="text-2xl font-bold text-[--text-primary]">Nueva plantilla</h1>
+        <h1 className="text-2xl font-bold text-[--text-primary]">Nueva Plantilla</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-[--bg-card] rounded-xl border border-[--border-primary] p-6 space-y-5">
@@ -102,7 +99,7 @@ export default function NuevaPlantillaPage() {
 
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="secondary" type="button" onClick={() => router.back()}>Cancelar</Button>
-          <Button type="submit" loading={loading}>Crear plantilla</Button>
+          <Button type="submit" loading={loading}>Crear Plantilla</Button>
         </div>
       </form>
 

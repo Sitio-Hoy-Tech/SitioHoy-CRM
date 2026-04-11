@@ -6,31 +6,28 @@ const UMAMI_SHARE_URL = "https://cloud.umami.is/share/usKaaaTn3oMRKgvd";
 
 const PERIODS = [
   { label: "24h", value: "24h" },
-  { label: "7 días", value: "7d" },
-  { label: "30 días", value: "30d" },
-  { label: "90 días", value: "90d" },
-  { label: "Este año", value: "1y" },
+  { label: "7d", value: "7d" },
+  { label: "30d", value: "30d" },
+  { label: "90d", value: "90d" },
+  { label: "1y", value: "1y" },
 ];
 
 export default function EstadisticasPage() {
-  const [period, setPeriod] = useState("30d");
+  const [period, setPeriod] = useState("24h");
 
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[--text-primary]">Estadísticas</h1>
-          <p className="text-sm text-[--text-muted] mt-1">Analítica de tus sitios web</p>
-        </div>
-        <div className="flex gap-1 bg-[--bg-card] rounded-lg border border-[--border-primary] p-1">
+        <h1 className="text-2xl font-bold text-[--text-primary]">Estadísticas</h1>
+        <div className="flex bg-[--bg-card] rounded-lg border border-[--border-primary] p-1">
           {PERIODS.map((p) => (
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 period === p.value
                   ? "bg-[--accent] text-white"
-                  : "text-[--text-secondary] hover:bg-[--bg-elevated]"
+                  : "text-[--text-secondary] hover:text-[--text-primary]"
               }`}
             >
               {p.label}
@@ -48,13 +45,6 @@ export default function EstadisticasPage() {
           loading="lazy"
         />
       </div>
-
-      <p className="text-xs text-[--text-muted] mt-3 text-center">
-        Powered by Umami &middot;{" "}
-        <a href={UMAMI_SHARE_URL} target="_blank" rel="noopener noreferrer" className="text-[--accent] hover:underline">
-          Abrir en nueva pestaña
-        </a>
-      </p>
     </div>
   );
 }
