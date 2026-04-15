@@ -10,6 +10,7 @@ interface DatePickerProps {
   error?: string;
   required?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
 export default function DatePicker({
@@ -19,6 +20,7 @@ export default function DatePicker({
   error,
   required,
   placeholder = "Seleccionar fecha",
+  className = "",
 }: DatePickerProps) {
   const selected = value ? new Date(value + "T12:00:00") : null;
 
@@ -45,9 +47,9 @@ export default function DatePicker({
         locale={es}
         dateFormat="dd/MM/yyyy"
         placeholderText={placeholder}
-        className={`w-full bg-input border rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-200 ${
+        className={`w-full bg-[#0f172a]/80 backdrop-blur-md border rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 hover:bg-[#0f172a]/95 ${
           error ? "border-danger" : "border-edge"
-        }`}
+        } ${className}`}
         calendarClassName="dark-calendar"
         showPopperArrow={false}
         isClearable

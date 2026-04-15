@@ -52,7 +52,7 @@ export const clienteSchema = z.object({
 
 export const planSchema = z.object({
   nombre: z.string().min(1, "Nombre requerido"),
-  beneficios: z.string().min(1, "Beneficios requeridos"),
+  beneficios: z.string().optional().or(z.literal("")),
   precio: z.coerce.number().positive("Precio debe ser positivo"),
 });
 

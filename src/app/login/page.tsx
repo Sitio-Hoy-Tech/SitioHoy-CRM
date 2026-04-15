@@ -41,9 +41,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         <div className="bg-card rounded-2xl border border-edge p-10 shadow-lg">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-white font-bold text-2xl">S</span>
-            </div>
+            <img
+              src="/logo-sitio-hoy.png"
+              alt="SitioHoy Logo"
+              className="w-16 h-16 object-contain mx-auto mb-4 shadow-xl"
+            />
             <h1 className="text-2xl font-bold text-heading">SitioHoy CRM</h1>
             <p className="text-muted mt-2 text-sm">Ingresá a tu panel de administración</p>
           </div>

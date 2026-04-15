@@ -42,10 +42,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
-      const isOnLogin = request.nextUrl.pathname.startsWith("/login");
+      const { pathname } = request.nextUrl;
+      const isOnLogin = pathname.startsWith("/login");
+      const isStaticAsset = /\.(png|svg|jpg|jpeg|gif|ico)$/i.test(pathname);
 
-      if (isOnLogin) {
-        if (isLoggedIn) return Response.redirect(new URL("/", request.nextUrl));
+      if (isOnLogin || isStaticAsset) {
+        if (isLoggedIn && isOnLogin) return Response.redirect(new URL("/", request.nextUrl));
         return true;
       }
 
