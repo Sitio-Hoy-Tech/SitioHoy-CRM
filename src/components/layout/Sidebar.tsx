@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm11 0h7v7h-7v-7z" },
@@ -27,14 +28,17 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
-    <aside className="w-60 bg-surface-alt border-r border-edge min-h-screen flex flex-col">
+    <aside className="w-60 glass border-r border-edge min-h-screen flex flex-col sticky top-0 h-screen z-50">
       <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo-sitio-hoy.png"
+            alt="SitioHoy Logo"
+            className="w-10 h-10 object-contain"
+          />
           <h1 className="text-base font-bold text-heading">SitioHoy CRM</h1>
         </div>
       </div>
@@ -57,11 +61,10 @@ export default function Sidebar() {
             <div key={item.name}>
               <Link
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${
-                  isActive || isCatalogActive
-                    ? "bg-accent/10 text-accent"
-                    : "text-body hover:bg-elevated hover:text-heading"
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${isActive || isCatalogActive
+                  ? "bg-accent/10 text-accent"
+                  : "text-body hover:bg-elevated hover:text-heading"
+                  }`}
               >
                 {(isActive || isCatalogActive) && (
                   <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
@@ -88,12 +91,11 @@ export default function Sidebar() {
                     <Link
                       key={child.href}
                       href={child.href}
-                      className={`block px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${
-                        pathname === child.href ||
+                      className={`block px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${pathname === child.href ||
                         pathname.startsWith(child.href + "/")
-                          ? "text-accent font-medium"
-                          : "text-muted hover:text-heading"
-                      }`}
+                        ? "text-accent font-medium"
+                        : "text-muted hover:text-heading"
+                        }`}
                     >
                       {child.name}
                     </Link>
@@ -104,6 +106,34 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* User Section */}
+      <div className="mt-auto border-t border-edge p-4 bg-white/[0.01]">
+        <div className="flex items-center gap-3 mb-4 px-1">
+          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white/5">
+            <span className="text-white text-sm font-black">
+              {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-heading truncate">
+              {session?.user?.name || "Usuario"}
+            </p>
+            <p className="text-[10px] text-muted font-medium truncate uppercase tracking-wider">
+              {session?.user.role}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-black text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all border border-rose-500/20 hover:border-rose-500 uppercase tracking-widest cursor-pointer"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Cerrar Sesión
+        </button>
+      </div>
     </aside>
   );
 }

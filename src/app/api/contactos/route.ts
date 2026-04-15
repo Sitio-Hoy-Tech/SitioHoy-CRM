@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
 import { contactoSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       cambios_nuevos: contacto,
     });
 
+    revalidatePath("/");
     return NextResponse.json({ data: contacto }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

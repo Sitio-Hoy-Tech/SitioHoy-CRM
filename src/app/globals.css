@@ -8,15 +8,16 @@
    ============================================ */
 
 :root {
-  --bg-primary: #0B1120;
-  --bg-secondary: #111827;
-  --bg-card: #1a2332;
-  --bg-card-hover: #1f2a3d;
-  --bg-input: #0f1729;
-  --bg-elevated: #243044;
+  --bg-primary: #020617;
+  --bg-secondary: rgba(255, 255, 255, 0.03);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  --bg-input: rgba(0, 0, 0, 0.4);
+  --bg-elevated: rgba(255, 255, 255, 0.1);
+  --bg-dropdown: #0f172a;
 
-  --border-primary: #1e2d3d;
-  --border-secondary: #2a3a4e;
+  --border-primary: rgba(255, 255, 255, 0.12);
+  --border-secondary: rgba(255, 255, 255, 0.2);
   --border-focus: #10b981;
 
   --accent: #10b981;
@@ -31,19 +32,21 @@
   --warning: #f59e0b;
   --warning-soft: rgba(245, 158, 11, 0.1);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
   --text-accent: #10b981;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
+  --glass-blur: blur(40px) saturate(180%);
 }
 
 @theme inline {
@@ -60,18 +63,66 @@
   --color-danger-soft: #ef444419;
   --color-warning: #f59e0b;
   --color-warning-soft: #f59e0b19;
-  --color-surface: #0B1120;
-  --color-surface-alt: #111827;
-  --color-card: #1a2332;
-  --color-card-hover: #1f2a3d;
-  --color-input: #0f1729;
-  --color-elevated: #243044;
-  --color-edge: #1e2d3d;
-  --color-edge-alt: #2a3a4e;
+  --color-surface: var(--bg-primary);
+  --color-surface-alt: var(--bg-secondary);
+  --color-card: var(--bg-card);
+  --color-card-hover: var(--bg-card-hover);
+  --color-input: var(--bg-input);
+  --color-elevated: var(--bg-elevated);
+  --color-edge: var(--border-primary);
+  --color-edge-alt: var(--border-secondary);
   --color-edge-focus: #10b981;
-  --color-heading: #f1f5f9;
+  --color-heading: #f8fafc;
   --color-body: #94a3b8;
   --color-muted: #64748b;
+}
+
+.glass {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  
+  /* Borde sutil premium */
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  
+  box-shadow: 
+    0 10px 40px -10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass h1, .glass h2, .glass h3, .glass h4, .glass p, .glass span {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.glass-hover:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-lg);
+}
+
+.bg-decoration-blur {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -10;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.bg-solid-layer {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: -20;
 }
 
 * {
@@ -79,8 +130,13 @@
   scrollbar-color: var(--border-secondary) transparent;
 }
 
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
 body {
-  background: var(--bg-primary);
+  background: transparent;
   color: var(--text-primary);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -91,17 +147,20 @@ body {
    React DatePicker Dark Override
    ============================================ */
 .react-datepicker {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-secondary) !important;
-  border-radius: var(--radius-md) !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--radius-lg) !important;
   font-family: inherit !important;
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7) !important;
 }
 
 .react-datepicker__header {
-  background-color: var(--bg-secondary) !important;
-  border-bottom: 1px solid var(--border-primary) !important;
-  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  padding-top: 10px !important;
 }
 
 .react-datepicker__current-month,
@@ -172,8 +231,13 @@ body {
 }
 
 .PhoneInputCountrySelect {
-  background: var(--bg-card) !important;
+  background: var(--bg-dropdown) !important;
   color: var(--text-primary) !important;
+}
+
+select option {
+  background-color: var(--bg-dropdown);
+  color: var(--text-primary);
 }
 
 .PhoneInputCountryIcon {
@@ -199,6 +263,33 @@ input:-webkit-autofill:focus {
 /* ============================================
    Animations
    ============================================ */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: slide-in 0.6s ease-out forwards;
+}
+
+/* Custom Scrollbar Glass */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

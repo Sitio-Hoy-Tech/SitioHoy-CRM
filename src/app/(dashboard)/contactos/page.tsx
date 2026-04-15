@@ -9,6 +9,7 @@ import Select from "@/components/common/Select";
 import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import DatePicker from "@/components/common/DatePicker";
+import FiltersBar from "@/components/common/FiltersBar";
 import type { Contacto, EstadoContacto, EtiquetaNegocio } from "@/types";
 
 const ORIGENES = [
@@ -83,6 +84,18 @@ export default function ContactosPage() {
   const from = (page - 1) * limit + 1;
   const to = Math.min(page * limit, count);
 
+  const hasActiveFilters = !!(search || estadoId || etiquetaId || origen || fechaDesde || fechaHasta);
+
+  const clearFilters = () => {
+    setSearch("");
+    setEstadoId("");
+    setEtiquetaId("");
+    setOrigen("");
+    setFechaDesde("");
+    setFechaHasta("");
+    setPage(1);
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -93,47 +106,59 @@ export default function ContactosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <FiltersBar onClear={clearFilters} showClear={hasActiveFilters}>
+        <div className="relative group">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
-            placeholder="Buscar..."
+            placeholder="Filtrar por nombre..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-48 bg-input border border-edge rounded-lg pl-9 pr-3.5 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+            className={`w-48 bg-input border rounded-lg pl-9 pr-3.5 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all ${
+              search ? 'border-accent/50 ring-1 ring-accent/20' : 'border-edge'
+            }`}
           />
         </div>
-        <Select
-          options={estados.map(e => ({ value: e.id, label: e.nombre }))}
-          placeholder="Estado"
-          value={estadoId}
-          onChange={(e) => { setEstadoId(e.target.value); setPage(1); }}
-        />
-        <Select
-          options={etiquetas.map(e => ({ value: e.id, label: e.nombre }))}
-          placeholder="Etiqueta"
-          value={etiquetaId}
-          onChange={(e) => { setEtiquetaId(e.target.value); setPage(1); }}
-        />
-        <Select
-          options={ORIGENES.slice(1)}
-          placeholder="Origen"
-          value={origen}
-          onChange={(e) => { setOrigen(e.target.value); setPage(1); }}
-        />
-        <DatePicker
-          placeholder="Desde"
-          value={fechaDesde}
-          onChange={(val) => { setFechaDesde(val); setPage(1); }}
-        />
-        <DatePicker
-          placeholder="Hasta"
-          value={fechaHasta}
-          onChange={(val) => { setFechaHasta(val); setPage(1); }}
-        />
-      </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            options={estados.map(e => ({ value: e.id, label: e.nombre }))}
+            placeholder="Estado"
+            value={estadoId}
+            onChange={(e) => { setEstadoId(e.target.value); setPage(1); }}
+            className={`!py-2 !h-auto min-w-[140px] ${estadoId ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+          />
+          <Select
+            options={etiquetas.map(e => ({ value: e.id, label: e.nombre }))}
+            placeholder="Etiqueta"
+            value={etiquetaId}
+            onChange={(e) => { setEtiquetaId(e.target.value); setPage(1); }}
+            className={`!py-2 !h-auto min-w-[140px] ${etiquetaId ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+          />
+          <Select
+            options={ORIGENES.slice(1)}
+            placeholder="Origen"
+            value={origen}
+            onChange={(e) => { setOrigen(e.target.value); setPage(1); }}
+            className={`!py-2 !h-auto min-w-[140px] ${origen ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+          />
+          <div className="flex items-center gap-2">
+            <DatePicker
+              placeholder="Desde"
+              value={fechaDesde}
+              onChange={(val) => { setFechaDesde(val); setPage(1); }}
+              className={`!py-2 !h-auto w-32 ${fechaDesde ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            />
+            <DatePicker
+              placeholder="Hasta"
+              value={fechaHasta}
+              onChange={(val) => { setFechaHasta(val); setPage(1); }}
+              className={`!py-2 !h-auto w-32 ${fechaHasta ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            />
+          </div>
+        </div>
+      </FiltersBar>
 
       {/* Tabla */}
       <div className="bg-card rounded-xl border border-edge overflow-hidden">

@@ -24,7 +24,7 @@ interface SearchableSelectProps {
 const customStyles = {
   control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
     ...base,
-    backgroundColor: "var(--bg-input)",
+    backgroundColor: state.isFocused ? "var(--bg-dropdown)" : "rgba(0,0,0,0.5)",
     borderColor: state.isFocused ? "var(--accent)" : "var(--border-primary)",
     borderRadius: "8px",
     padding: "2px 4px",
@@ -36,7 +36,7 @@ const customStyles = {
   }),
   menu: (base: Record<string, unknown>) => ({
     ...base,
-    backgroundColor: "var(--bg-card)",
+    backgroundColor: "var(--bg-dropdown)",
     border: "1px solid var(--border-secondary)",
     borderRadius: "12px",
     boxShadow: "var(--shadow-lg)",

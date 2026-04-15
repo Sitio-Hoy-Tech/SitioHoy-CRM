@@ -92,22 +92,31 @@ export default function PlanesPage() {
       <h1 className="text-2xl font-bold text-heading mb-6">Catálogos &gt; Planes</h1>
 
       {/* Inline create form */}
-      <form onSubmit={handleCreate} className="flex items-end gap-3 mb-6">
+      <form onSubmit={handleCreate} className="flex items-end gap-3 mb-8 bg-card p-4 rounded-xl border border-edge">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-body mb-1.5">Nombre del plan</label>
+          <label className="block text-sm font-medium text-body mb-1.5">Nombre</label>
           <input
             required
             value={form.nombre}
             onChange={(e) => setForm(f => ({ ...f, nombre: e.target.value }))}
-            placeholder="Nombre"
+            placeholder="Ej: Plan Basic"
             className="w-full bg-input border border-edge rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
           />
         </div>
-        <div className="w-40">
+        <div className="flex-[1.5]">
+          <label className="block text-sm font-medium text-body mb-1.5">Beneficios (separados por coma)</label>
+          <input
+            value={form.beneficios}
+            onChange={(e) => setForm(f => ({ ...f, beneficios: e.target.value }))}
+            placeholder="Ej: Hosting, Soporte, Dominio gratis"
+            className="w-full bg-input border border-edge rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+          />
+        </div>
+        <div className="w-36">
           <label className="block text-sm font-medium text-body mb-1.5">Precio</label>
           <CurrencyInput required value={form.precio} onChange={(val) => setForm(f => ({ ...f, precio: val }))} />
         </div>
-        <Button type="submit" loading={saving}>Agregar</Button>
+        <Button type="submit" loading={saving}>Agregar plan</Button>
       </form>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
