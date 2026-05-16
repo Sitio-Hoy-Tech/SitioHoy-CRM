@@ -22,7 +22,8 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(xargs grep -l \"Cliente\")",
       "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\ValenOrdu\\\\Desktop\\\\SitioHoy-CRM\\\\SitioHoy-CRM\\\\src\\\\app\\\\api\\\\sitiohoy\\\\tenants\\\\[tenant_id]\")",
-      "Bash(Out-Null)"
+      "Bash(Out-Null)",
+      "Bash(Select-Object -Property Name, PSIsContainer)"
     ]
   }
 }
