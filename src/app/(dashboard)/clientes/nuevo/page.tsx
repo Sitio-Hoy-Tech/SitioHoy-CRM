@@ -31,7 +31,10 @@ export default function NuevoClientePage() {
     plantilla_id: "",
     etiqueta_negocio_id: "",
     fecha_pago: new Date().toISOString().split("T")[0],
+    email: "",
+    password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -210,6 +213,54 @@ export default function NuevoClientePage() {
               {fechaVencimiento || "Se calcula automáticamente"}
             </div>
             <p className="text-xs text-muted mt-1">30 días después del pago</p>
+          </div>
+        </div>
+
+        <div className="border-t border-edge pt-5 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-heading mb-0.5">Acceso al panel SitioHoy</p>
+            <p className="text-xs text-muted">Credenciales para que el cliente inicie sesión en su tienda.</p>
+          </div>
+          <Input
+            label="Email"
+            required
+            type="email"
+            value={form.email}
+            onChange={(e) => updateField("email", e.target.value)}
+            placeholder="cliente@ejemplo.com"
+          />
+          <div>
+            <label className="block text-sm font-medium text-body mb-1.5">
+              Contraseña<span className="text-accent ml-0.5">*</span>
+            </label>
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => updateField("password", e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className="w-full bg-input border border-edge rounded-lg px-3.5 py-2.5 pr-10 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-200"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-heading transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

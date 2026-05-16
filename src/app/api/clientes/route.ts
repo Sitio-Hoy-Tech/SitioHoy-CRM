@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { revalidatePath } from "next/cache";
 import { clienteSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
@@ -66,8 +67,24 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
     const body = await request.json();
-    const parsed = clienteSchema.safeParse(body);
 
+    // Extraer credenciales de auth (no son campos del CRM)
+    const { email: authEmail, password: authPassword, ...crmBody } = body;
+
+    if (!authEmail || !authPassword) {
+      return NextResponse.json(
+        { error: "Email y contraseña del panel son requeridos" },
+        { status: 400 }
+      );
+    }
+    if (authPassword.length < 6) {
+      return NextResponse.json(
+        { error: "La contraseña debe tener al menos 6 caracteres" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = clienteSchema.safeParse(crmBody);
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
@@ -75,10 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generar tenant_id único
-    const tenant_id = `tenant_${parsed.data.dominio.replace(/[^a-zA-Z0-9]/g, "_")}`;
-
-    // Verificar dominio único
+    // Verificar dominio único en el CRM
     const { data: existing } = await supabaseAdmin
       .from("clientes")
       .select("id")
@@ -90,7 +104,76 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El dominio ya está registrado" }, { status: 409 });
     }
 
-    const { data: cliente, error } = await supabaseAdmin
+    // Generar UUID real para el tenant
+    const tenant_id = crypto.randomUUID();
+
+    // Obtener el nombre del plan para mapearlo al valor de SitioHoy
+    const { data: planData } = await supabaseAdmin
+      .from("planes")
+      .select("nombre")
+      .eq("id", parsed.data.plan_id)
+      .single();
+
+    // ── 1. Crear tenant en SitioHoy ──────────────────────────────────────────
+    const slug = parsed.data.dominio.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const { error: tenantError } = await supabaseSitioHoy
+      .from("tenants")
+      .insert({
+        id: tenant_id,
+        name: parsed.data.nombre_empresa,
+        slug,
+        url: `https://${parsed.data.dominio}`,
+        plan: (planData?.nombre ?? "esencial").toLowerCase(),
+        status: "active",
+      });
+
+    if (tenantError) {
+      return NextResponse.json(
+        { error: `Error creando tenant: ${tenantError.message}` },
+        { status: 500 }
+      );
+    }
+
+    // ── 2. Crear usuario de authentication en SitioHoy ───────────────────────
+    const { data: authData, error: authError } = await supabaseSitioHoy.auth.admin.createUser({
+      email: authEmail,
+      password: authPassword,
+      email_confirm: true,
+    });
+
+    if (authError) {
+      await supabaseSitioHoy.from("tenants").delete().eq("id", tenant_id);
+      return NextResponse.json(
+        { error: `Error creando usuario: ${authError.message}` },
+        { status: 500 }
+      );
+    }
+
+    const authUserId = authData.user.id;
+
+    // ── 3. Vincular usuario al tenant (user_tenants + user_id en tenants) ────
+    const [utResult] = await Promise.all([
+      supabaseSitioHoy
+        .from("user_tenants")
+        .insert({ user_id: authUserId, tenant_id, role: "owner" }),
+      supabaseSitioHoy
+        .from("tenants")
+        .update({ user_id: authUserId })
+        .eq("id", tenant_id),
+    ]);
+
+    if (utResult.error) {
+      // Rollback auth user y tenant
+      await supabaseSitioHoy.auth.admin.deleteUser(authUserId);
+      await supabaseSitioHoy.from("tenants").delete().eq("id", tenant_id);
+      return NextResponse.json(
+        { error: `Error vinculando usuario al tenant: ${utResult.error.message}` },
+        { status: 500 }
+      );
+    }
+
+    // ── 4. Crear cliente en el CRM ────────────────────────────────────────────
+    const { data: cliente, error: clienteError } = await supabaseAdmin
       .from("clientes")
       .insert({
         ...parsed.data,
@@ -100,8 +183,11 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (clienteError) {
+      await supabaseSitioHoy.from("user_tenants").delete().eq("tenant_id", tenant_id);
+      await supabaseSitioHoy.auth.admin.deleteUser(authUserId);
+      await supabaseSitioHoy.from("tenants").delete().eq("id", tenant_id);
+      return NextResponse.json({ error: clienteError.message }, { status: 500 });
     }
 
     await registrarAuditoria({

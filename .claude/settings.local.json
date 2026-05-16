@@ -7,7 +7,22 @@
       "Bash(cp -r crm-sitiohoy-temp/.gitignore crm-sitiohoy/)",
       "Bash(cp -r crm-sitiohoy-temp/.git crm-sitiohoy/)",
       "Bash(rm -rf crm-sitiohoy-temp)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(Select-String -Path \".env.local\" -Pattern \"SUPABASE\")",
+      "Bash(Select-Object -First 10)",
+      "Skill(update-config)",
+      "Bash(claude mcp *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ValenOrdu\\\\Desktop\\\\SitioHoy-CRM\\\\SitioHoy-CRM\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(curl -s -H \"Authorization: Bearer sbp_73a6bf81e9d350619adb3177b912868947f0de3b\" \"https://api.supabase.com/v1/projects\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ValenOrdu\\\\Desktop\\\\SitioHoy-CRM\\\\SitioHoy-CRM\\\\src\\\\app\\\\\\(dashboard\\)\\\\clientes\" -Recurse -Include \"*.tsx\", \"*.ts\", \"*.jsx\", \"*.js\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"Cliente\")",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\ValenOrdu\\\\Desktop\\\\SitioHoy-CRM\\\\SitioHoy-CRM\\\\src\\\\app\\\\api\\\\sitiohoy\\\\tenants\\\\[tenant_id]\")",
+      "Bash(Out-Null)"
     ]
   }
 }
