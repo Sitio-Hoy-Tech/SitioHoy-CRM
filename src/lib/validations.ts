@@ -39,11 +39,12 @@ export const contactoSchema = z.object({
 export const clienteSchema = z.object({
   nombre_empresa: z.string().min(1, "Nombre de empresa requerido"),
   contacto_id: z.string().uuid("Contacto requerido"),
-  dominio: z.string().min(1, "Dominio requerido"),
+  dominio: z.string().optional().or(z.literal("")).transform(v => v || null),
   plan_id: z.string().uuid("Plan requerido"),
-  plantilla_id: z.string().uuid("Plantilla requerida"),
+  plantilla_id: z.string().uuid("Plantilla requerida").optional().or(z.literal("")).transform(v => v || null),
   etiqueta_negocio_id: z.string().uuid("Etiqueta de negocio requerida"),
   fecha_pago: z.string().min(1, "Fecha de pago requerida"),
+  tenant_id: z.string().uuid("Tenant ID inválido").optional().or(z.literal("")).transform(v => v || null),
 });
 
 // ============================================

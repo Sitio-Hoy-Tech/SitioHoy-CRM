@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
+    const archived = searchParams.get("archived") === "true";
 
     let query = supabaseAdmin
       .from("clientes")
@@ -30,9 +31,14 @@ export async function GET(request: NextRequest) {
         usuario_creador:usuarios!clientes_created_by_fkey(id, nombre, apellido)`,
         { count: "exact" }
       )
-      .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+
+    if (archived) {
+      query = query.not("deleted_at", "is", null);
+    } else {
+      query = query.is("deleted_at", null);
+    }
+    query = query.range(offset, offset + limit - 1);
 
     if (search) {
       query = query.or(
@@ -92,16 +98,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar dominio único en el CRM
-    const { data: existing } = await supabaseAdmin
-      .from("clientes")
-      .select("id")
-      .eq("dominio", parsed.data.dominio)
-      .is("deleted_at", null)
-      .single();
+    // Verificar dominio único en el CRM (solo si se proporcionó)
+    if (parsed.data.dominio) {
+      const { data: existing } = await supabaseAdmin
+        .from("clientes")
+        .select("id")
+        .eq("dominio", parsed.data.dominio)
+        .is("deleted_at", null)
+        .single();
 
-    if (existing) {
-      return NextResponse.json({ error: "El dominio ya está registrado" }, { status: 409 });
+      if (existing) {
+        return NextResponse.json({ error: "El dominio ya está registrado" }, { status: 409 });
+      }
     }
 
     // Generar UUID real para el tenant
@@ -115,14 +123,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     // ── 1. Crear tenant en SitioHoy ──────────────────────────────────────────
-    const slug = parsed.data.dominio.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const slugBase = parsed.data.dominio ?? parsed.data.nombre_empresa;
+    const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const { error: tenantError } = await supabaseSitioHoy
       .from("tenants")
       .insert({
         id: tenant_id,
         name: parsed.data.nombre_empresa,
         slug,
-        url: `https://${parsed.data.dominio}`,
+        url: parsed.data.dominio ? `https://${parsed.data.dominio}` : null,
         plan: (planData?.nombre ?? "esencial").toLowerCase(),
         status: "active",
       });

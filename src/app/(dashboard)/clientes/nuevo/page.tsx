@@ -141,10 +141,9 @@ export default function NuevoClientePage() {
 
         <Input
           label="Dominio"
-          required
           value={form.dominio}
           onChange={(e) => updateField("dominio", e.target.value)}
-          placeholder="Ej: gymforce.com"
+          placeholder="Ej: gymforce.com (opcional)"
         />
 
         <div className="grid grid-cols-2 gap-4">
@@ -164,12 +163,11 @@ export default function NuevoClientePage() {
           />
           <SearchableSelect
             label="Plantilla"
-            required
             options={plantillas.map(p => ({
               value: p.id,
               label: p.nombre,
             }))}
-            placeholder="Seleccionar plantilla"
+            placeholder="Seleccionar plantilla (opcional)"
             value={form.plantilla_id}
             onChange={(val) => updateField("plantilla_id", val)}
           />

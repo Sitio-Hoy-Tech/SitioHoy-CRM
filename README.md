@@ -83,18 +83,19 @@ Usuario → NextAuth (JWT) → Next.js App Router → Supabase PostgreSQL
 src/
 ├── app/
 │   ├── (dashboard)/              # Grupo de rutas protegidas con sidebar
-│   │   ├── layout.tsx            # Layout del dashboard
+│   │   ├── layout.tsx
 │   │   ├── page.tsx              # Dashboard principal (métricas)
 │   │   ├── contactos/
-│   │   │   ├── page.tsx          # Lista de contactos con filtros
-│   │   │   ├── nuevo/page.tsx    # Crear contacto
-│   │   │   └── [id]/
-│   │   │       ├── page.tsx      # Detalle/edición de contacto
-│   │   │       └── seguimiento/page.tsx
-│   │   ├── clientes/
 │   │   │   ├── page.tsx
 │   │   │   ├── nuevo/page.tsx
-│   │   │   └── [id]/page.tsx
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx
+│   │   │       └── seguimiento/page.tsx
+│   │   ├── clientes/
+│   │   │   ├── page.tsx          # Lista activa con filtros
+│   │   │   ├── nuevo/page.tsx
+│   │   │   ├── archivados/page.tsx  # Clientes archivados (restaurar / eliminar)
+│   │   │   └── [id]/page.tsx     # Detalle + sección SitioHoy + zona de peligro
 │   │   ├── plantillas/
 │   │   │   ├── page.tsx
 │   │   │   ├── nuevo/page.tsx
@@ -108,7 +109,7 @@ src/
 │   │   ├── auditoria/page.tsx
 │   │   ├── estadisticas/page.tsx
 │   │   └── calendario/page.tsx
-│   ├── login/page.tsx            # Página de login
+│   ├── login/page.tsx
 │   ├── api/
 │   │   ├── auth/
 │   │   │   ├── [...nextauth]/route.ts
@@ -119,9 +120,11 @@ src/
 │   │   │       ├── route.ts
 │   │   │       └── seguimiento/route.ts
 │   │   ├── clientes/
-│   │   │   ├── route.ts
-│   │   │   ├── [id]/route.ts
-│   │   │   └── sitiohoy/tenants/[tenant_id]/route.ts
+│   │   │   ├── route.ts                        # GET (soporta ?archived=true) / POST
+│   │   │   └── [id]/
+│   │   │       ├── route.ts                    # GET / PUT / DELETE (soft)
+│   │   │       ├── restore/route.ts            # POST — restaurar archivado
+│   │   │       └── delete-permanent/route.ts   # POST — borrado total con purga SitioHoy
 │   │   ├── plantillas/
 │   │   │   ├── route.ts
 │   │   │   └── [id]/route.ts
@@ -132,13 +135,18 @@ src/
 │   │   │   └── planes/route.ts + [id]/route.ts
 │   │   ├── usuarios/route.ts + [id]/route.ts
 │   │   ├── auditoria/route.ts
-│   │   └── sitiohoy/tenants/[tenant_id]/route.ts
-│   ├── globals.css               # Variables CSS + Tailwind
-│   └── layout.tsx                # Root layout
+│   │   └── sitiohoy/tenants/
+│   │       └── [tenant_id]/
+│   │           ├── route.ts                    # GET / PATCH — datos del tenant
+│   │           └── users/
+│   │               ├── route.ts                # GET / POST — usuarios del tenant
+│   │               └── [user_id]/route.ts      # PATCH — cambiar email/contraseña
+│   ├── globals.css
+│   └── layout.tsx
 ├── components/
 │   ├── layout/
-│   │   ├── Sidebar.tsx           # Navegación lateral colapsable
-│   │   └── Providers.tsx         # SessionProvider + QueryClientProvider
+│   │   ├── Sidebar.tsx
+│   │   └── Providers.tsx
 │   ├── common/
 │   │   ├── Button.tsx
 │   │   ├── Input.tsx
@@ -152,14 +160,15 @@ src/
 │   │   ├── Toast.tsx
 │   │   └── FiltersBar.tsx
 │   ├── dashboard/
-│   │   └── DashboardRealtimeManager.tsx  # Subscriptions Supabase Realtime
-│   └── CatalogoCRUD.tsx          # CRUD genérico para catálogos
+│   │   └── DashboardRealtimeManager.tsx
+│   └── CatalogoCRUD.tsx
 ├── lib/
-│   ├── auth.ts                   # Configuración NextAuth
-│   ├── supabase.ts               # Cliente Supabase (anon)
-│   └── supabaseAdmin.ts          # Cliente Supabase (service role)
+│   ├── auth.ts
+│   ├── supabase.ts
+│   ├── supabase-sitiohoy.ts      # Cliente service role para DB de SitioHoy
+│   └── supabaseAdmin.ts
 ├── types/
-│   └── index.ts                  # Tipos TypeScript globales
+│   └── index.ts
 └── proxy.ts
 ```
 
@@ -315,12 +324,32 @@ Todas las rutas retornan JSON. Los errores siguen el formato `{ error: string }`
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/clientes` | Lista con filtros |
+| GET | `/api/clientes` | Lista con filtros (ver parámetros abajo) |
 | POST | `/api/clientes` | Crear cliente |
 | GET | `/api/clientes/[id]` | Obtener por ID |
 | PUT | `/api/clientes/[id]` | Actualizar |
-| DELETE | `/api/clientes/[id]` | Soft delete |
-| GET | `/api/clientes/sitiohoy/tenants/[tenant_id]` | Info del tenant en plataforma SitioHoy |
+| DELETE | `/api/clientes/[id]` | Soft delete (archiva) |
+| POST | `/api/clientes/[id]/restore` | Restaurar cliente archivado |
+| POST | `/api/clientes/[id]/delete-permanent` | Borrado permanente + purga SitioHoy |
+
+**Parámetros de GET /api/clientes:**
+- `archived=true` — devuelve solo clientes con `deleted_at IS NOT NULL` (archivados)
+- `nombre_empresa` — búsqueda parcial case-insensitive
+- `plan_id`, `etiqueta_negocio_id` — filtros exactos
+- `page`, `limit` — paginación
+
+**POST /api/clientes/[id]/delete-permanent:**  
+Elimina permanentemente el registro del CRM y purga todos los datos del tenant en la plataforma SitioHoy en orden seguro de FK: eventos de órdenes → órdenes → imágenes y variantes de productos → productos → subcategorías → categorías → cupones / mensajes / zonas de envío → `user_tenants` → usuarios de Auth → tenant.
+
+### SitioHoy Tenants
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/sitiohoy/tenants/[tenant_id]` | Datos del tenant en plataforma SitioHoy |
+| PATCH | `/api/sitiohoy/tenants/[tenant_id]` | Actualizar datos del tenant |
+| GET | `/api/sitiohoy/tenants/[tenant_id]/users` | Usuarios vinculados al tenant |
+| POST | `/api/sitiohoy/tenants/[tenant_id]/users` | Crear usuario en Auth + vincular al tenant |
+| PATCH | `/api/sitiohoy/tenants/[tenant_id]/users/[user_id]` | Cambiar email y/o contraseña de un usuario |
 
 ### Plantillas
 
@@ -485,9 +514,14 @@ Mismas que en desarrollo, con estos cambios:
 ### Gestión de clientes
 
 - Vinculación a contacto existente
-- Asignación de plan, plantilla HTML y etiqueta de negocio
+- Asignación de plan, etiqueta de negocio y (opcionalmente) plantilla HTML y dominio
 - Tracking de `fecha_pago` y `fecha_vencimiento` automática (+30 días via trigger)
 - Integración con la plataforma SitioHoy via `tenant_id`
+- **Archivado y restauración**: el botón de archivo en la lista aplica soft delete; los clientes archivados se ven en `/clientes/archivados` y se pueden restaurar desde ahí
+- **Dos tipos de borrado**:
+  - *Archivar* (soft delete reversible) — oculta el cliente de la lista activa
+  - *Borrar permanentemente* — elimina el registro del CRM y purga todos los datos del tenant en SitioHoy; requiere escribir el nombre exacto del cliente para confirmar (estilo GitHub/Vercel)
+- **Gestión de usuarios SitioHoy** desde el detalle del cliente: ver usuarios vinculados al tenant, crear nuevos con email y contraseña, y editar email/contraseña de usuarios existentes
 
 ### Plantillas HTML
 
@@ -535,9 +569,12 @@ El componente `DashboardRealtimeManager` se suscribe a cambios en las tablas `co
 
 ### Plataforma SitioHoy (multi-tenant)
 
-El campo `tenant_id` en `clientes` permite consultar información del tenant correspondiente en la base de datos de la plataforma SitioHoy via los endpoints:
-- `GET /api/clientes/sitiohoy/tenants/[tenant_id]`
-- `GET /api/sitiohoy/tenants/[tenant_id]`
+El campo `tenant_id` en `clientes` enlaza cada cliente CRM con su tenant en la base de datos de la plataforma SitioHoy (proyecto Supabase separado). Desde el detalle del cliente el CRM puede:
+
+- Consultar y editar datos del tenant (`GET / PATCH /api/sitiohoy/tenants/[tenant_id]`)
+- Listar usuarios vinculados al tenant — consulta la tabla `user_tenants` para obtener todos los usuarios reales, con fallback al campo `owner_id` del tenant (`GET /api/sitiohoy/tenants/[tenant_id]/users`)
+- Crear nuevos usuarios de Auth y vincularlos automáticamente en `user_tenants` (`POST`)
+- Cambiar email y/o contraseña de usuarios existentes via Admin API (`PATCH /api/sitiohoy/tenants/[tenant_id]/users/[user_id]`)
 
 ### Umami Analytics
 

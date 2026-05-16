@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/Button";
-import Input from "@/components/common/Input";
 import Select from "@/components/common/Select";
 import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
@@ -64,12 +63,11 @@ export default function ClientesPage() {
     const res = await fetch(`/api/clientes/${deleteId}`, { method: "DELETE" });
     setDeleting(false);
     setDeleteId(null);
-
     if (res.ok) {
-      setToast({ message: "Cliente eliminado", type: "success" });
+      setToast({ message: "Cliente archivado", type: "success" });
       fetchClientes();
     } else {
-      setToast({ message: "Error al eliminar", type: "error" });
+      setToast({ message: "Error al archivar", type: "error" });
     }
   }
 
@@ -82,28 +80,30 @@ export default function ClientesPage() {
   const totalPages = Math.ceil(count / limit);
   const from = (page - 1) * limit + 1;
   const to = Math.min(page * limit, count);
-
   const hasActiveFilters = !!(search || planId || estado || etiquetaId || vencimientoDias);
 
   const clearFilters = () => {
-    setSearch("");
-    setPlanId("");
-    setEstado("");
-    setEtiquetaId("");
-    setVencimientoDias("");
-    setPage(1);
+    setSearch(""); setPlanId(""); setEstado("");
+    setEtiquetaId(""); setVencimientoDias(""); setPage(1);
   };
 
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-heading">Clientes</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-heading">Clientes</h1>
+          <Link
+            href="/clientes/archivados"
+            className="text-xs text-muted hover:text-heading border border-edge hover:border-edge/60 px-2.5 py-1 rounded-full transition-colors"
+          >
+            Archivados
+          </Link>
+        </div>
         <Link href="/clientes/nuevo">
           <Button>+ Nuevo cliente</Button>
         </Link>
       </div>
 
-      {/* Filtros */}
       <FiltersBar onClear={clearFilters} showClear={hasActiveFilters}>
         <div className="relative group">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +114,7 @@ export default function ClientesPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className={`w-48 bg-input border rounded-lg pl-9 pr-3.5 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all ${
-              search ? 'border-accent/50 ring-1 ring-accent/20' : 'border-edge'
+              search ? "border-accent/50 ring-1 ring-accent/20" : "border-edge"
             }`}
           />
         </div>
@@ -125,7 +125,7 @@ export default function ClientesPage() {
             placeholder="Plan"
             value={planId}
             onChange={(e) => { setPlanId(e.target.value); setPage(1); }}
-            className={`!py-2 !h-auto min-w-[140px] ${planId ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            className={`!py-2 !h-auto min-w-[140px] ${planId ? "border-accent/50 ring-1 ring-accent/20" : ""}`}
           />
           <Select
             options={[
@@ -135,20 +135,20 @@ export default function ClientesPage() {
             placeholder="Estado"
             value={estado}
             onChange={(e) => { setEstado(e.target.value); setPage(1); }}
-            className={`!py-2 !h-auto min-w-[140px] ${estado ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            className={`!py-2 !h-auto min-w-[140px] ${estado ? "border-accent/50 ring-1 ring-accent/20" : ""}`}
           />
           <Select
             options={etiquetas.map(e => ({ value: e.id, label: e.nombre }))}
             placeholder="Etiqueta"
             value={etiquetaId}
             onChange={(e) => { setEtiquetaId(e.target.value); setPage(1); }}
-            className={`!py-2 !h-auto min-w-[140px] ${etiquetaId ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            className={`!py-2 !h-auto min-w-[140px] ${etiquetaId ? "border-accent/50 ring-1 ring-accent/20" : ""}`}
           />
           <DatePicker
             placeholder="Vencimiento"
             value={vencimientoDias}
             onChange={(val) => { setVencimientoDias(val); setPage(1); }}
-            className={`!py-2 !h-auto w-36 ${vencimientoDias ? 'border-accent/50 ring-1 ring-accent/20' : ''}`}
+            className={`!py-2 !h-auto w-36 ${vencimientoDias ? "border-accent/50 ring-1 ring-accent/20" : ""}`}
           />
         </div>
       </FiltersBar>
@@ -170,13 +170,9 @@ export default function ClientesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-12 text-muted">Cargando...</td>
-                </tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted">Cargando...</td></tr>
               ) : clientes.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-12 text-muted">No hay clientes</td>
-                </tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted">No hay clientes</td></tr>
               ) : (
                 clientes.map((c) => {
                   const dias = c.fecha_vencimiento ? diasParaVencer(c.fecha_vencimiento) : null;
@@ -191,9 +187,7 @@ export default function ClientesPage() {
                       <td className="px-4 py-3 text-body">{c.etiqueta_negocio?.nombre || "-"}</td>
                       <td className="px-4 py-3">
                         {c.fecha_vencimiento && (
-                          <span className={`text-sm ${
-                            dias !== null && dias <= 0 ? "text-red-400" : "text-body"
-                          }`}>
+                          <span className={`text-sm ${dias !== null && dias <= 0 ? "text-red-400" : "text-body"}`}>
                             {new Date(c.fecha_vencimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                           </span>
                         )}
@@ -214,7 +208,7 @@ export default function ClientesPage() {
                           <button
                             onClick={() => router.push(`/clientes/${c.id}`)}
                             className="p-1.5 rounded-md text-muted hover:text-heading hover:bg-elevated transition-colors"
-                            title="Editar"
+                            title="Ver detalle"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -223,10 +217,10 @@ export default function ClientesPage() {
                           <button
                             onClick={() => setDeleteId(c.id)}
                             className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-soft transition-colors"
-                            title="Eliminar"
+                            title="Archivar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776M12 12.75l-3 3m3-3 3 3m-3-3v7.5" />
                             </svg>
                           </button>
                         </div>
@@ -242,7 +236,7 @@ export default function ClientesPage() {
         {count > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-edge">
             <p className="text-sm text-muted">
-              Mostrando {from}-{to} de {count} clientes
+              Mostrando {from}–{to} de {count} clientes
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
@@ -258,9 +252,7 @@ export default function ClientesPage() {
                     key={p}
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                      page === p
-                        ? "bg-accent text-white"
-                        : "text-muted hover:bg-elevated"
+                      page === p ? "bg-accent text-white" : "text-muted hover:bg-elevated"
                     }`}
                   >
                     {p}
@@ -279,13 +271,14 @@ export default function ClientesPage() {
         )}
       </div>
 
-      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Confirmar eliminación">
+      <Modal open={!!deleteId} onClose={() => setDeleteId(null)} title="Archivar cliente">
         <p className="text-sm text-body mb-4">
-          ¿Estás seguro de que querés eliminar este registro? Esta acción no se puede deshacer.
+          El cliente quedará archivado y no aparecerá en la lista activa. Podés restaurarlo desde{" "}
+          <Link href="/clientes/archivados" className="text-accent hover:underline">Clientes archivados</Link>.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
-          <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>
+          <Button variant="danger" loading={deleting} onClick={handleDelete}>Archivar</Button>
         </div>
       </Modal>
 

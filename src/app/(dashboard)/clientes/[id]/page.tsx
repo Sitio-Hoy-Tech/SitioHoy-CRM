@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
+import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
@@ -103,7 +104,7 @@ export default function ClienteDetallePage() {
 
   const [form, setForm] = useState({
     nombre_empresa: "", contacto_id: "", dominio: "", plan_id: "",
-    plantilla_id: "", etiqueta_negocio_id: "", fecha_pago: "",
+    plantilla_id: "", etiqueta_negocio_id: "", fecha_pago: "", tenant_id: "",
   });
 
   // SitioHoy platform state
@@ -113,6 +114,26 @@ export default function ClienteDetallePage() {
   const [shSaving, setShSaving] = useState(false);
   const [shForm, setShForm] = useState<SHForm>(EMPTY_SH_FORM);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
+
+  const [shUsers, setShUsers] = useState<Array<{
+    id: string; email: string | null; created_at: string;
+    last_sign_in_at: string | null; is_owner: boolean;
+  }>>([]);
+  const [shUsersLoading, setShUsersLoading] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ email: "", password: "" });
+  const [createUserSaving, setCreateUserSaving] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ email: "", password: "" });
+  const [editUserSaving, setEditUserSaving] = useState(false);
+
+  // Borrado
+  const [showSoftDelete, setShowSoftDelete] = useState(false);
+  const [softDeleting, setSoftDeleting] = useState(false);
+  const [showPermanentDelete, setShowPermanentDelete] = useState(false);
+  const [permanentDeleteInput, setPermanentDeleteInput] = useState("");
+  const [permanentDeleting, setPermanentDeleting] = useState(false);
+  const permanentDeleteRef = useRef<HTMLInputElement>(null);
 
   function copyToClipboard(value: string, field: string) {
     navigator.clipboard.writeText(value).then(() => {
@@ -136,6 +157,7 @@ export default function ClienteDetallePage() {
             plantilla_id: c.plantilla_id || "",
             etiqueta_negocio_id: c.etiqueta_negocio_id || "",
             fecha_pago: c.fecha_pago?.split("T")[0] || "",
+            tenant_id: c.tenant_id || "",
           });
         }
         setLoading(false);
@@ -181,6 +203,15 @@ export default function ClienteDetallePage() {
       })
       .catch(() => setShLoading(false));
   }, [cliente?.tenant_id]);
+
+  useEffect(() => {
+    if (!shTenant || !cliente?.tenant_id) return;
+    setShUsersLoading(true);
+    fetch(`/api/sitiohoy/tenants/${cliente.tenant_id}/users`)
+      .then(r => r.json())
+      .then(json => { if (json.data) setShUsers(json.data); })
+      .finally(() => setShUsersLoading(false));
+  }, [shTenant, cliente?.tenant_id]);
 
   function loadCatalogos() {
     Promise.all([
@@ -262,6 +293,78 @@ export default function ClienteDetallePage() {
     setToast({ message: "SitioHoy actualizado", type: "success" });
   }
 
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateUserSaving(true);
+    const res = await fetch(`/api/sitiohoy/tenants/${cliente!.tenant_id}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createUserForm),
+    });
+    const json = await res.json();
+    setCreateUserSaving(false);
+    if (!res.ok) {
+      setToast({ message: json.error || "Error al crear usuario", type: "error" });
+      return;
+    }
+    const refreshed = await fetch(`/api/sitiohoy/tenants/${cliente!.tenant_id}/users`).then(r => r.json());
+    setShUsers(refreshed.data || []);
+    setShowCreateUser(false);
+    setCreateUserForm({ email: "", password: "" });
+    setToast({ message: "Usuario creado", type: "success" });
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
+    e.preventDefault();
+    setEditUserSaving(true);
+    const body: { email?: string; password?: string } = {};
+    if (editUserForm.email) body.email = editUserForm.email;
+    if (editUserForm.password) body.password = editUserForm.password;
+    const res = await fetch(`/api/sitiohoy/tenants/${cliente!.tenant_id}/users/${editingUserId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    setEditUserSaving(false);
+    if (!res.ok) {
+      setToast({ message: json.error || "Error al actualizar usuario", type: "error" });
+      return;
+    }
+    const refreshed = await fetch(`/api/sitiohoy/tenants/${cliente!.tenant_id}/users`).then(r => r.json());
+    setShUsers(refreshed.data || []);
+    setEditingUserId(null);
+    setEditUserForm({ email: "", password: "" });
+    setToast({ message: "Usuario actualizado", type: "success" });
+  }
+
+  async function handleSoftDelete() {
+    setSoftDeleting(true);
+    const res = await fetch(`/api/clientes/${id}`, { method: "DELETE" });
+    setSoftDeleting(false);
+    if (res.ok) {
+      router.push("/clientes");
+    } else {
+      const json = await res.json();
+      setToast({ message: json.error || "Error al archivar", type: "error" });
+      setShowSoftDelete(false);
+    }
+  }
+
+  async function handlePermanentDelete() {
+    if (permanentDeleteInput.trim() !== cliente?.nombre_empresa.trim()) return;
+    setPermanentDeleting(true);
+    const res = await fetch(`/api/clientes/${id}/delete-permanent`, { method: "POST" });
+    setPermanentDeleting(false);
+    if (res.ok) {
+      router.push("/clientes");
+    } else {
+      const json = await res.json();
+      setToast({ message: json.error || "Error al eliminar", type: "error" });
+      setShowPermanentDelete(false);
+    }
+  }
+
   if (loading) return <div className="text-muted py-12 text-center">Cargando...</div>;
   if (!cliente) return <div className="text-muted py-12 text-center">Cliente no encontrado</div>;
 
@@ -311,7 +414,7 @@ export default function ClienteDetallePage() {
             placeholder="Buscar contacto..." value={form.contacto_id}
             onChange={(val) => updateField("contacto_id", val)}
           />
-          <Input label="Dominio" required value={form.dominio} onChange={(e) => updateField("dominio", e.target.value)} />
+          <Input label="Dominio" value={form.dominio} onChange={(e) => updateField("dominio", e.target.value)} placeholder="Ej: gymforce.com (opcional)" />
           <div className="grid grid-cols-2 gap-4">
             <SearchableSelect
               label="Plan" required
@@ -320,9 +423,9 @@ export default function ClienteDetallePage() {
               onChange={(val) => updateField("plan_id", val)}
             />
             <SearchableSelect
-              label="Plantilla" required
+              label="Plantilla"
               options={plantillas.map(p => ({ value: p.id, label: p.nombre }))}
-              placeholder="Seleccionar" value={form.plantilla_id}
+              placeholder="Seleccionar (opcional)" value={form.plantilla_id}
               onChange={(val) => updateField("plantilla_id", val)}
             />
           </div>
@@ -356,6 +459,12 @@ export default function ClienteDetallePage() {
             onChange={(val) => updateField("etiqueta_negocio_id", val)}
           />
           <DatePicker label="Fecha de pago" required value={form.fecha_pago} onChange={(val) => updateField("fecha_pago", val)} />
+          <Input
+            label="Tenant ID (SitioHoy)"
+            placeholder="UUID del tenant en SitioHoy"
+            value={form.tenant_id}
+            onChange={(e) => updateField("tenant_id", e.target.value)}
+          />
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setEditing(false)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Guardar cambios</Button>
@@ -799,11 +908,180 @@ export default function ClienteDetallePage() {
                     })}
                   </dl>
                 </div>
+
+                {/* Usuarios */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wider">Usuarios</p>
+                    <button
+                      type="button"
+                      onClick={() => { setShowCreateUser(true); setEditingUserId(null); setCreateUserForm({ email: "", password: "" }); }}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      + Agregar usuario
+                    </button>
+                  </div>
+
+                  {showCreateUser && (
+                    <form onSubmit={handleCreateUser} className="mb-4 bg-elevated rounded-lg p-4 space-y-3 border border-edge">
+                      <p className="text-xs font-semibold text-heading">Nuevo usuario</p>
+                      <Input label="Email" type="email" required value={createUserForm.email} onChange={e => setCreateUserForm(prev => ({ ...prev, email: e.target.value }))} />
+                      <Input label="Contraseña" type="password" required value={createUserForm.password} onChange={e => setCreateUserForm(prev => ({ ...prev, password: e.target.value }))} />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="secondary" type="button" onClick={() => { setShowCreateUser(false); setCreateUserForm({ email: "", password: "" }); }}>Cancelar</Button>
+                        <Button type="submit" loading={createUserSaving}>Crear</Button>
+                      </div>
+                    </form>
+                  )}
+
+                  {shUsersLoading ? (
+                    <p className="text-xs text-muted">Cargando usuarios...</p>
+                  ) : shUsers.length === 0 ? (
+                    <p className="text-xs text-muted">Sin usuarios registrados</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {shUsers.map(user => (
+                        <li key={user.id} className="bg-elevated rounded-lg p-3 border border-edge">
+                          {editingUserId === user.id ? (
+                            <form onSubmit={handleEditUser} className="space-y-3">
+                              <p className="text-xs text-muted font-mono truncate mb-1">{user.email}</p>
+                              <Input label="Nuevo email" type="email" value={editUserForm.email} onChange={e => setEditUserForm(prev => ({ ...prev, email: e.target.value }))} />
+                              <Input label="Nueva contraseña" type="password" value={editUserForm.password} onChange={e => setEditUserForm(prev => ({ ...prev, password: e.target.value }))} />
+                              <div className="flex justify-end gap-2">
+                                <Button variant="secondary" type="button" onClick={() => { setEditingUserId(null); setEditUserForm({ email: "", password: "" }); }}>Cancelar</Button>
+                                <Button type="submit" loading={editUserSaving}>Guardar</Button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-heading font-mono">{user.email || "-"}</p>
+                                <p className="text-xs text-muted mt-0.5 flex items-center gap-2">
+                                  {user.is_owner && <span className="text-accent">Propietario</span>}
+                                  {user.last_sign_in_at && (
+                                    <span>Último acceso: {new Date(user.last_sign_in_at).toLocaleDateString("es-AR")}</span>
+                                  )}
+                                  {!user.is_owner && !user.last_sign_in_at && (
+                                    <span>Sin accesos</span>
+                                  )}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => { setEditingUserId(user.id); setEditUserForm({ email: user.email || "", password: "" }); setShowCreateUser(false); }}
+                                className="text-xs text-muted hover:text-accent transition-colors ml-4 flex-shrink-0"
+                              >
+                                Editar
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )
           ) : null}
         </div>
       )}
+
+      {/* ── Zona de peligro ── */}
+      {!editing && (
+        <div className="mt-8 border border-red-500/20 rounded-xl p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-red-400">Zona de peligro</h2>
+
+          <div className="flex items-center justify-between py-3 border-b border-red-500/10">
+            <div>
+              <p className="text-sm font-medium text-heading">Archivar cliente</p>
+              <p className="text-xs text-muted mt-0.5">Oculta el cliente del CRM. Se puede restaurar luego.</p>
+            </div>
+            <Button variant="secondary" onClick={() => setShowSoftDelete(true)}>Archivar</Button>
+          </div>
+
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-heading">Eliminar permanentemente</p>
+              <p className="text-xs text-muted mt-0.5">
+                Borra el cliente, el tenant en SitioHoy, todos sus usuarios, productos, órdenes y datos asociados. <span className="text-red-400 font-medium">Esta acción es irreversible.</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowPermanentDelete(true); setPermanentDeleteInput(""); setTimeout(() => permanentDeleteRef.current?.focus(), 100); }}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors whitespace-nowrap"
+            >
+              Eliminar para siempre
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: archivar (soft delete) */}
+      <Modal open={showSoftDelete} onClose={() => setShowSoftDelete(false)} title="Archivar cliente">
+        <p className="text-sm text-body mb-4">
+          El cliente quedará archivado y no aparecerá en la lista. Podés restaurarlo más tarde desde la base de datos.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setShowSoftDelete(false)}>Cancelar</Button>
+          <Button variant="danger" loading={softDeleting} onClick={handleSoftDelete}>Archivar</Button>
+        </div>
+      </Modal>
+
+      {/* Modal: borrado permanente */}
+      <Modal
+        open={showPermanentDelete}
+        onClose={() => { setShowPermanentDelete(false); setPermanentDeleteInput(""); }}
+        title="Eliminar permanentemente"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-sm text-red-300 space-y-1">
+            <p className="font-semibold text-red-400">Esta acción no se puede deshacer. Se eliminará:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs mt-2">
+              <li>El cliente del CRM</li>
+              {cliente?.tenant_id && (
+                <>
+                  <li>El tenant en SitioHoy</li>
+                  <li>Todos los usuarios del tenant</li>
+                  <li>Todos los productos, categorías y variantes</li>
+                  <li>Todas las órdenes e ítems</li>
+                  <li>Cupones, zonas de envío y mensajes de contacto</li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm text-body mb-2">
+              Para confirmar, escribí el nombre del cliente:{" "}
+              <span className="font-semibold text-heading">{cliente?.nombre_empresa}</span>
+            </p>
+            <input
+              ref={permanentDeleteRef}
+              type="text"
+              value={permanentDeleteInput}
+              onChange={(e) => setPermanentDeleteInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && permanentDeleteInput.trim() === cliente?.nombre_empresa.trim()) handlePermanentDelete(); }}
+              placeholder={cliente?.nombre_empresa}
+              className="w-full bg-input border border-edge rounded-lg px-3 py-2 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500/50 transition-all"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setShowPermanentDelete(false); setPermanentDeleteInput(""); }}>
+              Cancelar
+            </Button>
+            <button
+              type="button"
+              disabled={permanentDeleteInput.trim() !== cliente?.nombre_empresa.trim() || permanentDeleting}
+              onClick={handlePermanentDelete}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {permanentDeleting ? "Eliminando..." : "Eliminar para siempre"}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

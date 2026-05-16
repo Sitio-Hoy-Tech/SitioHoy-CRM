@@ -67,8 +67,8 @@ export async function PUT(
       return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
 
-    // Verificar dominio único si cambió
-    if (parsed.data.dominio !== anterior.dominio) {
+    // Verificar dominio único si cambió y no está vacío
+    if (parsed.data.dominio && parsed.data.dominio !== anterior.dominio) {
       const { data: existing } = await supabaseAdmin
         .from("clientes")
         .select("id")

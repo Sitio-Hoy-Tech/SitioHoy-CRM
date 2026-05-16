@@ -23,7 +23,10 @@
       "Bash(xargs grep -l \"Cliente\")",
       "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\ValenOrdu\\\\Desktop\\\\SitioHoy-CRM\\\\SitioHoy-CRM\\\\src\\\\app\\\\api\\\\sitiohoy\\\\tenants\\\\[tenant_id]\")",
       "Bash(Out-Null)",
-      "Bash(Select-Object -Property Name, PSIsContainer)"
+      "Bash(Select-Object -Property Name, PSIsContainer)",
+      "mcp__supabase__execute_sql",
+      "Bash(npx tsc *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(sorted\\([p.lstrip\\('/'\\) for p in d['paths'].keys\\(\\) if p != '/']\\)\\)\\)\")"
     ]
   }
 }
