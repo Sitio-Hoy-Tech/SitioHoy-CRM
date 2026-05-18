@@ -125,6 +125,12 @@ export async function POST(request: NextRequest) {
     // ── 1. Crear tenant en SitioHoy ──────────────────────────────────────────
     const slugBase = parsed.data.dominio ?? parsed.data.nombre_empresa;
     const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const planNombre = (planData?.nombre ?? "").toLowerCase();
+    const maxProducts = planNombre.includes("empresa")
+      ? null
+      : planNombre.includes("emprendimiento")
+      ? 200
+      : 50;
     const { error: tenantError } = await supabaseSitioHoy
       .from("tenants")
       .insert({
@@ -132,8 +138,9 @@ export async function POST(request: NextRequest) {
         name: parsed.data.nombre_empresa,
         slug,
         url: parsed.data.dominio ? `https://${parsed.data.dominio}` : null,
-        plan: (planData?.nombre ?? "esencial").toLowerCase(),
+        plan: planNombre || "esencial",
         status: "active",
+        max_products: maxProducts,
       });
 
     if (tenantError) {

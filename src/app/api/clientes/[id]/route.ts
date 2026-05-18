@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { clienteSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
+
+function maxProductsForPlan(planNombre: string): number | null {
+  const n = planNombre.toLowerCase();
+  if (n.includes("empresa")) return null;
+  if (n.includes("emprendimiento")) return 200;
+  return 50;
+}
 
 // GET /api/clientes/[id]
 export async function GET(
@@ -91,6 +99,29 @@ export async function PUT(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Sincronizar plan y max_products en SitioHoy
+    if (anterior.tenant_id && parsed.data.plan_id) {
+      const { data: planData } = await supabaseAdmin
+        .from("planes")
+        .select("nombre")
+        .eq("id", parsed.data.plan_id)
+        .single();
+
+      if (planData) {
+        const { error: shError } = await supabaseSitioHoy
+          .from("tenants")
+          .update({
+            plan: planData.nombre.toLowerCase(),
+            max_products: maxProductsForPlan(planData.nombre),
+          })
+          .eq("id", anterior.tenant_id);
+
+        if (shError) {
+          console.error("[SitioHoy sync] Error actualizando tenant:", shError.message);
+        }
+      }
     }
 
     await registrarAuditoria({

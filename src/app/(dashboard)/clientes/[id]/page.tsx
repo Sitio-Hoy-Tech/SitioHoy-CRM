@@ -164,10 +164,9 @@ export default function ClienteDetallePage() {
       });
   }, [id]);
 
-  useEffect(() => {
-    if (!cliente?.tenant_id) return;
+  function loadShTenant(tenantId: string, contact?: Cliente["contacto"]) {
     setShLoading(true);
-    fetch(`/api/sitiohoy/tenants/${cliente.tenant_id}`)
+    fetch(`/api/sitiohoy/tenants/${tenantId}`)
       .then(r => r.json())
       .then(json => {
         if (json.data) {
@@ -177,7 +176,6 @@ export default function ClienteDetallePage() {
           // Auto-sync email/phone to CRM contact if missing
           const ownerEmail: string | null = json.data._owner_email ?? null;
           const ownerPhone: string | null = json.data._owner_phone ?? null;
-          const contact = cliente.contacto;
           if (contact && (!contact.email || !contact.telefono) && (ownerEmail || ownerPhone)) {
             fetch(`/api/contactos/${contact.id}`, {
               method: "PUT",
@@ -202,6 +200,11 @@ export default function ClienteDetallePage() {
         setShLoading(false);
       })
       .catch(() => setShLoading(false));
+  }
+
+  useEffect(() => {
+    if (!cliente?.tenant_id) return;
+    loadShTenant(cliente.tenant_id, cliente.contacto);
   }, [cliente?.tenant_id]);
 
   useEffect(() => {
@@ -266,6 +269,9 @@ export default function ClienteDetallePage() {
     setCliente(refreshed.data);
     setEditing(false);
     setToast({ message: "Cliente actualizado", type: "success" });
+    if (refreshed.data?.tenant_id) {
+      loadShTenant(refreshed.data.tenant_id, refreshed.data.contacto);
+    }
   }
 
   async function handleShSave(e: React.FormEvent) {
@@ -625,7 +631,11 @@ export default function ClienteDetallePage() {
                       options={SH_PLAN_OPTIONS}
                       placeholder="Seleccionar"
                       value={shForm.plan}
-                      onChange={val => updateShField("plan", val)}
+                      onChange={val => {
+                        updateShField("plan", val);
+                        const max = val === "empresa" ? "" : val === "emprendimiento" ? "200" : "50";
+                        updateShField("max_products", max);
+                      }}
                     />
                     <SearchableSelect
                       label="Estado"

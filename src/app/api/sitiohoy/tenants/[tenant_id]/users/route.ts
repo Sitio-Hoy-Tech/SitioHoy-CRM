@@ -7,22 +7,16 @@ export async function GET(
 ) {
   const { tenant_id } = await params;
 
-  // 1. Obtener el owner_id del tenant
-  const { data: tenant, error: tenantError } = await supabaseSitioHoy
+  // 1. Verificar que el tenant existe
+  const { error: tenantError } = await supabaseSitioHoy
     .from("tenants")
-    .select("id, user_id, owner_id, created_by")
+    .select("id")
     .eq("id", tenant_id)
     .single();
 
-  if (tenantError || !tenant) {
+  if (tenantError) {
     return NextResponse.json({ error: "Tenant no encontrado" }, { status: 404 });
   }
-
-  const ownerId: string | null =
-    (tenant as any).user_id ??
-    (tenant as any).owner_id ??
-    (tenant as any).created_by ??
-    null;
 
   // 2. Obtener todos los user_id vinculados al tenant desde user_tenants
   const { data: userTenants } = await supabaseSitioHoy
@@ -34,9 +28,11 @@ export async function GET(
     (userTenants ?? []).map((ut: { user_id: string; role: string }) => [ut.user_id, ut.role])
   );
 
-  // 3. Construir el set de IDs únicos (user_tenants + owner fallback)
+  const ownerId: string | null =
+    [...userTenantMap.entries()].find(([, role]) => role === "owner")?.[0] ?? null;
+
+  // 3. Construir el set de IDs únicos
   const userIds = new Set<string>(userTenantMap.keys());
-  if (ownerId) userIds.add(ownerId);
 
   if (userIds.size === 0) {
     return NextResponse.json({ data: [] });
