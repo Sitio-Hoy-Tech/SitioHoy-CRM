@@ -127,7 +127,31 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-secondary) transparent;
+  scrollbar-color: #10b981 #0a0f1e;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0f1e;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #34d399;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 button,
@@ -276,19 +300,21 @@ input:-webkit-autofill:focus {
   animation: slide-in 0.6s ease-out forwards;
 }
 
-/* Custom Scrollbar Glass */
+/* Custom Scrollbar - matches global */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0a0f1e;
+  border-radius: 999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  background: #10b981;
+  border-radius: 999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: #34d399;
 }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }

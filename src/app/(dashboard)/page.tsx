@@ -80,7 +80,7 @@ export default async function DashboardPage() {
     supabaseAdmin.from("clientes").select("id", { count: "exact" }).is("deleted_at", null),
     supabaseAdmin.from("contactos").select("id", { count: "exact" }).is("deleted_at", null).gt("created_at", sevenDaysAgo.toISOString()),
     supabaseAdmin.from("clientes").select("id, nombre_empresa, fecha_vencimiento").is("deleted_at", null).lte("fecha_vencimiento", sevenDaysFromNow.toISOString()).order("fecha_vencimiento", { ascending: true }),
-    supabaseAdmin.from("audit_log").select(`*, usuario:usuarios(id, nombre, apellido)`).in("tabla_afectada", ["contactos", "clientes", "seguimiento_contactos"]).order("created_at", { ascending: false }).limit(3),
+    supabaseAdmin.from("audit_log").select(`*, usuario:usuarios(id, nombre, apellido)`).in("tabla_afectada", ["contactos", "clientes", "seguimiento_contactos", "contact_messages"]).order("created_at", { ascending: false }).limit(5),
     supabaseAdmin.from("etiquetas_negocio").select("id, nombre").is("deleted_at", null),
     supabaseAdmin.from("contactos").select("etiqueta_negocio_id").is("deleted_at", null)
   ]);
@@ -225,7 +225,7 @@ export default async function DashboardPage() {
               <span className="text-[10px] bg-accent/10 text-accent px-2 py-1 rounded-md font-black uppercase tracking-widest border border-accent/20">Realtime</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+            <div className="p-2">
               {actividadReciente.length > 0 ? (
                 <div className="space-y-1">
                   {actividadReciente.map((log) => {
@@ -255,6 +255,17 @@ export default async function DashboardPage() {
                       targetName = relevantData?.nombre_empresa || "Cliente";
                       targetLink = `/clientes/${log.registro_id}`;
                       iconType = "building";
+                    } else if (log.tabla_afectada === "contact_messages") {
+                      const newStatus = log.cambios_nuevos?.status;
+                      const statusActions: Record<string, string> = {
+                        archived: "solucionó un ticket",
+                        reopened: "reabrió un ticket",
+                        read:     "puso un ticket en revisión",
+                        new:      "marcó un ticket como nuevo",
+                      };
+                      actionText = statusActions[newStatus] || "actualizó un ticket";
+                      targetLink = `/solicitudes/${log.registro_id}`;
+                      iconType = "ticket";
                     }
 
                     return (
@@ -270,9 +281,9 @@ export default async function DashboardPage() {
                                 <span className="text-sm font-bold text-heading block">
                                   {actorName} <span className="text-muted font-normal lowercase">{actionText}</span>
                                 </span>
-                                {targetLink && targetName && (
+                                {targetLink && (
                                   <Link href={targetLink} className="text-[11px] font-bold text-accent hover:underline inline-flex items-center gap-1 mt-0.5">
-                                    {targetName}
+                                    {targetName || "Ver ticket"}
                                   </Link>
                                 )}
                               </div>
@@ -288,6 +299,7 @@ export default async function DashboardPage() {
                                   {iconType === "message" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>}
                                   {iconType === "user" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                                   {iconType === "building" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
+                                  {iconType === "ticket" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
                                   {iconType === "default" && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                                 </div>
                               </div>

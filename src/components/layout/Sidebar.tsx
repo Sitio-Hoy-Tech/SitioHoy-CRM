@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useNewTicketCount, dispatchTicketsReset } from "@/stores/ticketStore";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm11 0h7v7h-7v-7z" },
@@ -20,6 +21,8 @@ const navigation = [
       { name: "Etiquetas plantillas", href: "/catalogos/etiquetas-plantillas" },
     ],
   },
+  { name: "Tickets", href: "/solicitudes", icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" },
+  { name: "Caja", href: "/caja", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { name: "Estadísticas", href: "/estadisticas", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
   { name: "Calendario", href: "/calendario", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
   { name: "Usuarios", href: "/usuarios", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
@@ -29,6 +32,7 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const newTicketCount = useNewTicketCount();
 
   return (
     <aside className="w-60 glass border-r border-edge min-h-screen flex flex-col sticky top-0 h-screen z-50">
@@ -61,6 +65,7 @@ export default function Sidebar() {
             <div key={item.name}>
               <Link
                 href={item.href}
+                onClick={() => { if (item.href === "/solicitudes") dispatchTicketsReset(); }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${isActive || isCatalogActive
                   ? "bg-accent/10 text-accent"
                   : "text-body hover:bg-elevated hover:text-heading"
@@ -83,6 +88,11 @@ export default function Sidebar() {
                   />
                 </svg>
                 {item.name}
+                {item.href === "/solicitudes" && newTicketCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center">
+                    {newTicketCount > 99 ? "99+" : newTicketCount}
+                  </span>
+                )}
               </Link>
 
               {item.children && (isActive || isCatalogActive) && (

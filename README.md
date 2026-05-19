@@ -37,6 +37,9 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 - Auditoría completa de cambios con diffs JSONB
 - Integración multi-tenant con la plataforma SitioHoy
 - Soft delete en todas las entidades
+- Sistema de tickets en tiempo real con notificaciones push
+- Sección de Caja con MRR automático, gastos manuales e historial mensual
+- Envío de email personalizado para recuperación de contraseña via Resend
 
 ---
 
@@ -54,13 +57,14 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 | Hashing | bcryptjs | 3.0.3 |
 | Lenguaje | TypeScript | 5.x |
 | Inputs | react-select, react-datepicker, react-phone-number-input | — |
+| Email | Resend | 4.x |
 
 ---
 
 ## Arquitectura del proyecto
 
 ```
-Usuario → NextAuth (JWT) → Next.js App Router → Supabase PostgreSQL
+Usuario → NextAuth (JWT) → Next.js App Router → Supabase CRM (nepjzwwkzsfegapvttgv)
                                     ↓
                             API Routes (REST)
                                     ↓
@@ -68,12 +72,18 @@ Usuario → NextAuth (JWT) → Next.js App Router → Supabase PostgreSQL
                      Supabase Anon Key (client-side)
                                     ↓
                          Supabase Realtime (WebSocket)
+
+Browser → WebSocket → Supabase SitioHoy Realtime (tickets en tiempo real)
+API Routes → Supabase SitioHoy Admin API → Resend (emails de recuperación)
+pg_cron (Supabase) → snapshot MRR diario a las 23:00 UTC
 ```
 
 - **Rendering**: Server Components por defecto, Client Components solo donde hay interactividad
 - **Auth**: JWT sessions via NextAuth, middleware protege rutas automáticamente
 - **DB access**: Service role key en API routes (server), anon key + RLS en cliente
-- **Real-time**: Supabase Realtime subscriptions para contactos, clientes y seguimientos
+- **Real-time tickets**: WebSocket directo browser → Supabase SitioHoy (sin pasar por Vercel)
+- **Real-time dashboard**: Supabase Realtime subscriptions para contactos, clientes y seguimientos
+- **MRR**: Calculado en vivo para el mes actual, snapshots históricos para meses pasados
 
 ---
 
@@ -105,6 +115,11 @@ src/
 │   │   │   ├── estados-contacto/page.tsx
 │   │   │   ├── etiquetas-negocio/page.tsx
 │   │   │   └── etiquetas-plantillas/page.tsx
+│   │   ├── solicitudes/
+│   │   │   ├── page.tsx              # Lista de tickets con filtros y estados
+│   │   │   └── [id]/page.tsx         # Detalle completo del ticket
+│   │   ├── caja/
+│   │   │   └── page.tsx              # MRR, gastos, tendencia mensual
 │   │   ├── usuarios/page.tsx
 │   │   ├── auditoria/page.tsx
 │   │   ├── estadisticas/page.tsx
@@ -135,6 +150,16 @@ src/
 │   │   │   └── planes/route.ts + [id]/route.ts
 │   │   ├── usuarios/route.ts + [id]/route.ts
 │   │   ├── auditoria/route.ts
+│   │   ├── solicitudes/
+│   │   │   ├── route.ts              # GET tickets con filtros
+│   │   │   └── [id]/
+│   │   │       ├── route.ts          # GET / PATCH estado
+│   │   │       └── reset-password/route.ts  # POST — envía email de recuperación via Resend
+│   │   ├── caja/
+│   │   │   ├── resumen/route.ts      # GET resumen mensual (MRR + gastos + tendencia)
+│   │   │   └── gastos/
+│   │   │       ├── route.ts          # GET / POST gastos
+│   │   │       └── [id]/route.ts     # PUT / DELETE gastos
 │   │   └── sitiohoy/tenants/
 │   │       └── [tenant_id]/
 │   │           ├── route.ts                    # GET / PATCH — datos del tenant
@@ -146,7 +171,8 @@ src/
 ├── components/
 │   ├── layout/
 │   │   ├── Sidebar.tsx
-│   │   └── Providers.tsx
+│   │   ├── Providers.tsx
+│   │   └── TicketNotifier.tsx    # WebSocket Realtime + toasts de nuevos tickets
 │   ├── common/
 │   │   ├── Button.tsx
 │   │   ├── Input.tsx
@@ -154,6 +180,7 @@ src/
 │   │   ├── Select.tsx
 │   │   ├── SearchableSelect.tsx
 │   │   ├── DatePicker.tsx
+│   │   ├── MonthPicker.tsx       # Selector de mes/año totalmente custom
 │   │   ├── PhoneInput.tsx
 │   │   ├── CurrencyInput.tsx
 │   │   ├── Modal.tsx
@@ -162,11 +189,14 @@ src/
 │   ├── dashboard/
 │   │   └── DashboardRealtimeManager.tsx
 │   └── CatalogoCRUD.tsx
+├── stores/
+│   └── ticketStore.ts            # Eventos custom para contador y refresh de tickets
 ├── lib/
 │   ├── auth.ts
 │   ├── supabase.ts
 │   ├── supabase-sitiohoy.ts      # Cliente service role para DB de SitioHoy
-│   └── supabaseAdmin.ts
+│   ├── supabaseAdmin.ts
+│   └── mrr.ts                    # tomarSnapshotMRR() — upsert snapshot mensual
 ├── types/
 │   └── index.ts
 └── proxy.ts
@@ -243,6 +273,27 @@ src/
 | cambios_nuevos | JSONB | Estado nuevo |
 | created_at | TIMESTAMPTZ | — |
 
+#### `caja_gastos`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| descripcion | VARCHAR | Descripción del gasto |
+| monto | DECIMAL | Importe |
+| categoria | VARCHAR | Ej: "Infraestructura", "Marketing" |
+| fecha | DATE | Fecha del gasto |
+| created_by | UUID FK | → usuarios |
+| deleted_at | TIMESTAMPTZ | Soft delete |
+
+#### `caja_mrr_snapshots`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| mes | DATE UNIQUE | Primer día del mes (ej: 2026-05-01) |
+| mrr | DECIMAL | MRR calculado ese mes |
+| total_clientes | INTEGER | Cantidad de clientes activos |
+| detalle | JSONB | Array de `{ nombre, precio, cantidad }` por plan |
+| created_at | TIMESTAMPTZ | — |
+
 #### Tablas de catálogo
 - **`planes`**: id, nombre (UNIQUE), beneficios, precio (DECIMAL)
 - **`estados_contacto`**: id, nombre (UNIQUE) — ej: "Posible cliente", "Cliente"
@@ -253,6 +304,13 @@ src/
 ### Triggers
 
 - `trg_clientes_vencimiento` — dispara `calcular_fecha_vencimiento()` en INSERT/UPDATE de `fecha_pago` en `clientes`, asigna `fecha_vencimiento = fecha_pago + INTERVAL '30 days'`
+- `set_updated_at` — actualiza `updated_at` automáticamente en `caja_gastos`
+
+### Cron jobs (pg_cron — Supabase CRM)
+
+| Job | Schedule | Descripción |
+|-----|----------|-------------|
+| `mrr-snapshot-diario` | `0 23 * * *` | Ejecuta `tomar_snapshot_mrr()` todos los días a las 23:00 UTC para garantizar snapshots históricos de MRR
 
 ### Índices
 
@@ -414,6 +472,17 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/
 # Supabase de la plataforma SitioHoy (multi-tenant)
 SITIOHOY_SUPABASE_URL=https://tu-proyecto-sitiohoy.supabase.co
 SITIOHOY_SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_sitiohoy
+NEXT_PUBLIC_SITIOHOY_SUPABASE_URL=https://tu-proyecto-sitiohoy.supabase.co
+NEXT_PUBLIC_SITIOHOY_SUPABASE_ANON_KEY=tu_anon_key_sitiohoy  # Usado para Realtime en browser
+
+# URL del panel de clientes SitioHoy (para redirect de recuperación de contraseña)
+SITIOHOY_APP_URL=https://admin.sitiohoy.com.ar
+
+# Resend (envío de emails transaccionales)
+RESEND_API_KEY=tu_api_key_resend
+
+# Cron secret (protege el endpoint /api/cron/mrr-snapshot si se usa en Vercel Pro)
+CRON_SECRET=genera_con_openssl_rand_-hex_32
 
 # Analytics (Umami)
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=tu_website_id
@@ -536,9 +605,33 @@ Mismas que en desarrollo, con estos cambios:
 - Etiquetas de negocio: sectores (ej: "Gimnasio", "Restaurante")
 - Etiquetas de plantillas: categorías de templates
 
+### Tickets (Solicitudes)
+
+- Lista de tickets recibidos desde la plataforma SitioHoy con filtros por estado y origen
+- Estados: **Nuevo**, **En revisión**, **Reabierto**, **Solucionado**
+- Página de detalle con información completa del remitente, tenant y metadata del ticket
+- Cambio de estado desde la página de detalle (panel lateral + botones en header)
+- Registro automático en auditoría al cambiar el estado de un ticket
+- **Notificaciones en tiempo real**: WebSocket directo browser → Supabase Realtime; al llegar un ticket nuevo aparece un toast animado clickeable que navega al detalle
+- Badge en el sidebar con contador de tickets nuevos no vistos
+- **Flujo de cambio de contraseña**: en tickets de tipo `password_reset_request`, botón "Enviar link de recuperación" → genera link via `auth.admin.generateLink()` → envía email personalizado HTML via Resend; el ticket se marca como solucionado automáticamente
+
+### Caja
+
+- Resumen mensual navegable con selector de mes personalizado (`MonthPicker`)
+- **MRR**: calculado en vivo para el mes actual desde clientes activos; para meses pasados usa snapshots históricos de `caja_mrr_snapshots`
+- **Snapshots automáticos**: se actualizan al crear/editar/borrar clientes o al cambiar el precio de un plan
+- **Cron job diario** (pg_cron en Supabase): garantiza un snapshot al final de cada día para no perder el histórico de meses sin actividad
+- Gráfico de tendencia de ingresos vs gastos de los últimos 6 meses
+- Desglose de ingresos por plan (nombre, precio, cantidad de clientes)
+- Gastos manuales: alta, edición y baja con categoría y fecha; selector de categoría custom (`SearchableSelect`) y calendario custom (`DatePicker`)
+- Desglose de gastos por categoría
+- Balance (MRR − gastos) mostrado en cards de resumen
+
 ### Auditoría
 
 - Log completo de todas las operaciones CREATE, UPDATE, DELETE
+- Incluye cambios de estado de tickets (`contact_messages`)
 - Diffs JSONB con estado anterior y nuevo
 - Filtros por usuario, tabla, acción y fecha
 - Acceso restringido a rol `admin`
@@ -575,6 +668,25 @@ El campo `tenant_id` en `clientes` enlaza cada cliente CRM con su tenant en la b
 - Listar usuarios vinculados al tenant — consulta la tabla `user_tenants` para obtener todos los usuarios reales, con fallback al campo `owner_id` del tenant (`GET /api/sitiohoy/tenants/[tenant_id]/users`)
 - Crear nuevos usuarios de Auth y vincularlos automáticamente en `user_tenants` (`POST`)
 - Cambiar email y/o contraseña de usuarios existentes via Admin API (`PATCH /api/sitiohoy/tenants/[tenant_id]/users/[user_id]`)
+
+### Supabase Realtime — Tickets
+
+`TicketNotifier` se monta en el layout del dashboard y abre un WebSocket directo al proyecto Supabase de SitioHoy usando la anon key pública. Se suscribe a eventos INSERT en `contact_messages`. Al llegar un ticket nuevo:
+1. Dispara un evento custom `crm:new-ticket` via `window.dispatchEvent`
+2. El sidebar lo captura y muestra un badge con el conteo
+3. Aparece un toast animado en la esquina inferior derecha, clickeable para ir al detalle
+4. Al entrar a la sección de Tickets el contador se resetea
+
+La suscripción requiere la política RLS `anon_select_realtime` en `contact_messages` del proyecto SitioHoy (habilitada en migración).
+
+### Resend — Email transaccional
+
+Cuando un admin hace clic en "Enviar link de recuperación" en un ticket de tipo `password_reset_request`:
+1. La API route genera el link via `supabaseSitioHoy.auth.admin.generateLink({ type: 'recovery' })`
+2. Envía un email HTML diseñado con estilo SitioHoy via `resend.emails.send()`
+3. El email incluye el botón "Crear nueva contraseña" con el link y un fallback de texto
+
+El template usa layout 100% basado en tablas con estilos inline para compatibilidad con todos los clientes de email (Gmail, Outlook, Apple Mail, mobile).
 
 ### Umami Analytics
 

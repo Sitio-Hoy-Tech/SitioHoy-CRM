@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { clienteSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
+import { tomarSnapshotMRR } from "@/lib/mrr";
 
 // GET /api/clientes - Listar con filtros
 export async function GET(request: NextRequest) {
@@ -214,6 +215,7 @@ export async function POST(request: NextRequest) {
       cambios_nuevos: cliente,
     });
 
+    await tomarSnapshotMRR();
     revalidatePath("/");
     return NextResponse.json({ data: cliente }, { status: 201 });
   } catch {

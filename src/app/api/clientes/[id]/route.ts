@@ -4,6 +4,7 @@ import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { clienteSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
+import { tomarSnapshotMRR } from "@/lib/mrr";
 
 function maxProductsForPlan(planNombre: string): number | null {
   const n = planNombre.toLowerCase();
@@ -133,6 +134,11 @@ export async function PUT(
       cambios_nuevos: cliente,
     });
 
+    // Solo tomar snapshot si cambiaron el plan o el estado
+    const planCambio = anterior?.plan_id !== cliente?.plan_id;
+    const estadoCambio = anterior?.estado !== cliente?.estado;
+    if (planCambio || estadoCambio) await tomarSnapshotMRR();
+
     return NextResponse.json({ data: cliente });
   } catch {
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
@@ -176,6 +182,7 @@ export async function DELETE(
       cambios_anteriores: anterior,
     });
 
+    await tomarSnapshotMRR();
     return NextResponse.json({ data: { success: true } });
   } catch {
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

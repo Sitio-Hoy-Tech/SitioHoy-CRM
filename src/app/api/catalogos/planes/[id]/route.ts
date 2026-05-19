@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { planSchema } from "@/lib/validations";
 import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
+import { tomarSnapshotMRR } from "@/lib/mrr";
 
 export async function GET(
   _request: NextRequest,
@@ -50,6 +51,8 @@ export async function PUT(
       usuario_id: user.id, tabla_afectada: "planes", registro_id: id,
       accion: "UPDATE", cambios_anteriores: anterior, cambios_nuevos: data,
     });
+
+    if (Number(anterior.precio) !== Number(data.precio)) await tomarSnapshotMRR();
 
     return NextResponse.json({ data });
   } catch {
