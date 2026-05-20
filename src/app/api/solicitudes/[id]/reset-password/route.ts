@@ -150,7 +150,7 @@ export async function POST(
       type: "recovery",
       email: ticket.email,
       options: {
-        redirectTo: `${process.env.SITIOHOY_APP_URL}/auth/reset-password`,
+        redirectTo: `${process.env.SITIOHOY_APP_URL ?? "https://admin.sitiohoy.com.ar"}/auth/reset-password`,
       },
     });
 
