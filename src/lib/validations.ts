@@ -41,7 +41,6 @@ export const clienteSchema = z.object({
   contacto_id: z.string().uuid("Contacto requerido"),
   dominio: z.string().optional().or(z.literal("")).transform(v => v || null),
   plan_id: z.string().uuid("Plan requerido"),
-  plantilla_id: z.string().uuid("Plantilla requerida").optional().or(z.literal("")).transform(v => v || null),
   etiqueta_negocio_id: z.string().uuid("Etiqueta de negocio requerida"),
   fecha_pago: z.string().min(1, "Fecha de pago requerida"),
   tenant_id: z.string().uuid("Tenant ID inválido").optional().or(z.literal("")).transform(v => v || null),
@@ -63,16 +62,6 @@ export const planSchema = z.object({
 
 export const catalogoSimpleSchema = z.object({
   nombre: z.string().min(1, "Nombre requerido"),
-});
-
-// ============================================
-// Plantillas
-// ============================================
-
-export const plantillaSchema = z.object({
-  nombre: z.string().min(1, "Nombre requerido"),
-  url_plantilla: z.string().url("URL de plantilla inválida").min(1, "URL de plantilla requerida"),
-  etiqueta_plantilla_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 // ============================================

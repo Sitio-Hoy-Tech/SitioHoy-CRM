@@ -9,13 +9,12 @@ import type { AuditLog, Usuario } from "@/types";
 const TABLAS = [
   { value: "contactos", label: "Contactos" },
   { value: "clientes", label: "Clientes" },
-  { value: "plantillas", label: "Plantillas" },
   { value: "planes", label: "Planes" },
   { value: "estados_contacto", label: "Estados contacto" },
   { value: "etiquetas_negocio", label: "Etiquetas negocio" },
-  { value: "etiquetas_plantillas", label: "Etiquetas plantillas" },
   { value: "seguimiento_contactos", label: "Seguimiento" },
   { value: "usuarios", label: "Usuarios" },
+  { value: "caja_gastos", label: "Gastos / Caja" },
 ];
 
 const ACCIONES = [

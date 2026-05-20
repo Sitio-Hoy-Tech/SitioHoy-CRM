@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTicketRefresh } from "@/stores/ticketStore";
 import Select from "@/components/common/Select";
 import FiltersBar from "@/components/common/FiltersBar";
+import DatePicker from "@/components/common/DatePicker";
 import Toast from "@/components/common/Toast";
 
 type Solicitud = {
@@ -55,11 +56,13 @@ export default function SolicitudesPage() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const limit = 10;
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -71,13 +74,15 @@ export default function SolicitudesPage() {
     if (source) params.set("source", source);
     if (search) params.set("search", search);
     if (status) params.set("status", status);
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
 
     const res = await fetch(`/api/solicitudes?${params}`);
     const json = await res.json();
     setSolicitudes(json.data || []);
     setCount(json.count || 0);
     setLoading(false);
-  }, [page, search, status, source]);
+  }, [page, search, status, source, dateFrom, dateTo]);
 
   useEffect(() => { fetchSolicitudes(); }, [fetchSolicitudes]);
   useTicketRefresh(fetchSolicitudes);
@@ -85,11 +90,16 @@ export default function SolicitudesPage() {
   const totalPages = Math.ceil(count / limit);
   const from = count === 0 ? 0 : (page - 1) * limit + 1;
   const to = Math.min(page * limit, count);
-  const hasActiveFilters = !!(search || status || source);
+  const hasActiveFilters = !!(search || status || source || dateFrom || dateTo);
 
   const clearFilters = () => {
-    setSearch(""); setStatus(""); setSource(""); setPage(1);
+    setSearch(""); setStatus(""); setSource(""); setDateFrom(""); setDateTo(""); setPage(1);
   };
+
+  const maxVisible = 5;
+  const startPage = Math.max(1, Math.min(page - 2, totalPages - maxVisible + 1));
+  const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+  const visiblePages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
 
   return (
     <div className="animate-fade-in">
@@ -137,6 +147,16 @@ export default function SolicitudesPage() {
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             className={`!py-2 !h-auto min-w-[140px] ${status ? "border-accent/50 ring-1 ring-accent/20" : ""}`}
+          />
+          <DatePicker
+            placeholder="Desde"
+            value={dateFrom}
+            onChange={(val) => { setDateFrom(val); setPage(1); }}
+          />
+          <DatePicker
+            placeholder="Hasta"
+            value={dateTo}
+            onChange={(val) => { setDateTo(val); setPage(1); }}
           />
         </div>
       </FiltersBar>
@@ -218,12 +238,21 @@ export default function SolicitudesPage() {
               <div className="flex items-center gap-1">
                 <button
                   disabled={page <= 1}
+                  onClick={() => setPage(1)}
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Primera página"
+                >
+                  «
+                </button>
+                <button
+                  disabled={page <= 1}
                   onClick={() => setPage(p => p - 1)}
                   className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  &lt;
+                  ‹
                 </button>
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+                {startPage > 1 && <span className="px-1 text-muted text-sm">…</span>}
+                {visiblePages.map((p) => (
                   <button
                     key={p}
                     onClick={() => setPage(p)}
@@ -234,12 +263,21 @@ export default function SolicitudesPage() {
                     {p}
                   </button>
                 ))}
+                {endPage < totalPages && <span className="px-1 text-muted text-sm">…</span>}
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
                   className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  &gt;
+                  ›
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(totalPages)}
+                  className="px-2 py-1 text-sm text-muted hover:text-heading disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Última página"
+                >
+                  »
                 </button>
               </div>
             )}

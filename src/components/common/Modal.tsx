@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -10,32 +10,36 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, title, children }: ModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      dialog.showModal();
-    } else {
-      dialog.close();
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
     }
-  }, [open]);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      className="backdrop:bg-black/20 backdrop:backdrop-blur-xl rounded-[2rem] p-0 w-[90%] max-w-md shadow-[0_32px_64px_-15px_rgba(0,0,0,0.8)] border border-white/10 text-heading outline-none fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 m-0 overflow-hidden"
-      style={{
-        background: 'linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      }}
-    >
-      <div className="flex flex-col h-full animate-fade-in">
-        {/* Header del Modal */}
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/20 backdrop-blur-xl"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div
+        className="relative z-50 w-[90%] max-w-md rounded-[2rem] shadow-[0_32px_64px_-15px_rgba(0,0,0,0.8)] border border-white/10 text-heading overflow-hidden animate-fade-in"
+        style={{
+          background: 'linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
           <h2 className="text-xl font-bold text-heading tracking-tight">{title}</h2>
           <button
@@ -48,11 +52,11 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
           </button>
         </div>
 
-        {/* Contenido del Modal */}
+        {/* Contenido */}
         <div className="p-8">
           {children}
         </div>
       </div>
-    </dialog>
+    </div>
   );
 }

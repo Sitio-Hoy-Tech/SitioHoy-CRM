@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get("source") || "";
     const status = searchParams.get("status") || "";
     const search = searchParams.get("search") || "";
+    const dateFrom = searchParams.get("date_from") || "";
+    const dateTo = searchParams.get("date_to") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
@@ -23,6 +25,8 @@ export async function GET(request: NextRequest) {
     if (search) {
       query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,message.ilike.%${search}%`);
     }
+    if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
+    if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
 
     const { data, error, count } = await query;
 

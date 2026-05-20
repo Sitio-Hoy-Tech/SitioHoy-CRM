@@ -8,7 +8,7 @@ import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
 import CurrencyInput from "@/components/common/CurrencyInput";
-import type { Contacto, Plan, Plantilla, EtiquetaNegocio } from "@/types";
+import type { Contacto, Plan, EtiquetaNegocio } from "@/types";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -17,7 +17,6 @@ export default function NuevoClientePage() {
 
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
-  const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [etiquetas, setEtiquetas] = useState<EtiquetaNegocio[]>([]);
 
   const [creatingPlan, setCreatingPlan] = useState(false);
@@ -28,7 +27,6 @@ export default function NuevoClientePage() {
     contacto_id: "",
     dominio: "",
     plan_id: "",
-    plantilla_id: "",
     etiqueta_negocio_id: "",
     fecha_pago: new Date().toISOString().split("T")[0],
     email: "",
@@ -40,12 +38,10 @@ export default function NuevoClientePage() {
     Promise.all([
       fetch("/api/contactos?limit=500").then(r => r.json()),
       fetch("/api/catalogos/planes").then(r => r.json()),
-      fetch("/api/plantillas").then(r => r.json()),
       fetch("/api/catalogos/etiquetas-negocio").then(r => r.json()),
-    ]).then(([contactosRes, planesRes, plantillasRes, etiquetasRes]) => {
+    ]).then(([contactosRes, planesRes, etiquetasRes]) => {
       setContactos(contactosRes.data || []);
       setPlanes(planesRes.data || []);
-      setPlantillas(plantillasRes.data || []);
       setEtiquetas(etiquetasRes.data || []);
     });
   }, []);
@@ -146,32 +142,20 @@ export default function NuevoClientePage() {
           placeholder="Ej: gymforce.com (opcional)"
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <SearchableSelect
-            label="Plan"
-            required
-            options={planes.map(p => ({
-              value: p.id,
-              label: `${p.nombre} ($${Number(p.precio).toLocaleString("es-AR")})`,
-            }))}
-            placeholder="Seleccionar plan"
-            value={form.plan_id}
-            onChange={(val) => updateField("plan_id", val)}
-            creatable
-            onCreateOption={handleCreatePlan}
-            isLoading={creatingPlan}
-          />
-          <SearchableSelect
-            label="Plantilla"
-            options={plantillas.map(p => ({
-              value: p.id,
-              label: p.nombre,
-            }))}
-            placeholder="Seleccionar plantilla (opcional)"
-            value={form.plantilla_id}
-            onChange={(val) => updateField("plantilla_id", val)}
-          />
-        </div>
+        <SearchableSelect
+          label="Plan"
+          required
+          options={planes.map(p => ({
+            value: p.id,
+            label: `${p.nombre} ($${Number(p.precio).toLocaleString("es-AR")})`,
+          }))}
+          placeholder="Seleccionar plan"
+          value={form.plan_id}
+          onChange={(val) => updateField("plan_id", val)}
+          creatable
+          onCreateOption={handleCreatePlan}
+          isLoading={creatingPlan}
+        />
 
         <SearchableSelect
           label="Etiqueta de negocio"

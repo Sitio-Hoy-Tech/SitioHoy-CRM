@@ -361,10 +361,10 @@ export default function SolicitudDetallePage() {
               <Button
                 onClick={handleSendReset}
                 loading={sendingReset}
-                disabled={resetSent}
+                disabled={resetSent || isSolved}
                 className="w-full justify-center"
               >
-                {resetSent ? "Email enviado" : "Enviar link de recuperación"}
+                {resetSent || isSolved ? "Email enviado" : "Enviar link de recuperación"}
               </Button>
             </div>
           )}

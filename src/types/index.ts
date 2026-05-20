@@ -60,33 +60,12 @@ export interface Contacto {
   usuario_creador?: Pick<Usuario, "id" | "nombre" | "apellido">;
 }
 
-export interface EtiquetaPlantilla {
-  id: string;
-  nombre: string;
-  created_at: string;
-  deleted_at: string | null;
-}
-
-export interface Plantilla {
-  id: string;
-  nombre: string;
-  url_plantilla: string;
-  etiqueta_plantilla_id: string | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  created_by: string | null;
-  // Relaciones expandidas
-  etiqueta_plantilla?: EtiquetaPlantilla;
-}
-
 export interface Cliente {
   id: string;
   nombre_empresa: string;
   contacto_id: string;
   dominio: string;
   plan_id: string;
-  plantilla_id: string;
   tenant_id: string;
   etiqueta_negocio_id: string;
   fecha_pago: string;
@@ -99,7 +78,6 @@ export interface Cliente {
   // Relaciones expandidas
   contacto?: Contacto;
   plan?: Plan;
-  plantilla?: Plantilla;
   etiqueta_negocio?: EtiquetaNegocio;
 }
 

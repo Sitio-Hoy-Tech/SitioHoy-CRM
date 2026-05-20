@@ -29,7 +29,6 @@ export async function GET(
           estado:estados_contacto(id, nombre)
         ),
         plan:planes(id, nombre, beneficios, precio),
-        plantilla:plantillas(id, nombre),
         etiqueta_negocio:etiquetas_negocio(id, nombre),
         usuario_creador:usuarios!clientes_created_by_fkey(id, nombre, apellido)`
       )

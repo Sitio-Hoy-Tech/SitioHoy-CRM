@@ -32,28 +32,36 @@ export default function DatePicker({
           {required && <span className="text-accent ml-0.5">*</span>}
         </label>
       )}
-      <ReactDatePicker
-        selected={selected}
-        onChange={(date: Date | null) => {
-          if (date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            onChange(`${year}-${month}-${day}`);
-          } else {
-            onChange("");
-          }
-        }}
-        locale={es}
-        dateFormat="dd/MM/yyyy"
-        placeholderText={placeholder}
-        className={`w-full bg-[#0f172a]/80 backdrop-blur-md border rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 hover:bg-[#0f172a]/95 ${
-          error ? "border-danger" : "border-edge"
-        } ${className}`}
-        calendarClassName="dark-calendar"
-        showPopperArrow={false}
-        isClearable
-      />
+      <div className="relative">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none z-10"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <ReactDatePicker
+          selected={selected}
+          onChange={(date: Date | null) => {
+            if (date) {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const day = String(date.getDate()).padStart(2, "0");
+              onChange(`${year}-${month}-${day}`);
+            } else {
+              onChange("");
+            }
+          }}
+          locale={es}
+          dateFormat="dd/MM/yyyy"
+          placeholderText={placeholder}
+          className={`w-full bg-[#0f172a]/80 backdrop-blur-md border rounded-lg pl-9 pr-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 hover:bg-[#0f172a]/95 ${
+            error ? "border-danger" : "border-edge"
+          } ${className}`}
+          calendarClassName="dark-calendar"
+          showPopperArrow={false}
+          isClearable
+        />
+      </div>
       {error && <p className="text-danger text-xs mt-1.5">{error}</p>}
     </div>
   );

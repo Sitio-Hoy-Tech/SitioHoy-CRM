@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import ReactSelect from "react-select";
 import CreatableSelect from "react-select/creatable";
 
@@ -41,7 +42,11 @@ const customStyles = {
     borderRadius: "12px",
     boxShadow: "var(--shadow-lg)",
     overflow: "hidden",
-    zIndex: 50,
+    zIndex: 9999,
+  }),
+  menuPortal: (base: Record<string, unknown>) => ({
+    ...base,
+    zIndex: 9999,
   }),
   menuList: (base: Record<string, unknown>) => ({
     ...base,
@@ -111,6 +116,9 @@ export default function SearchableSelect({
   onCreateOption,
   isLoading = false,
 }: SearchableSelectProps) {
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => { setPortalTarget(document.body); }, []);
+
   const selectedOption = options.find((o) => o.value === value) || null;
 
   const Component = creatable ? CreatableSelect : ReactSelect;
@@ -135,6 +143,8 @@ export default function SearchableSelect({
         formatCreateLabel={(input: string) => `Crear "${input}"`}
         onCreateOption={onCreateOption}
         menuPlacement="auto"
+        menuPortalTarget={portalTarget}
+        menuPosition="fixed"
       />
       {error && <p className="text-danger text-xs mt-1.5">{error}</p>}
     </div>

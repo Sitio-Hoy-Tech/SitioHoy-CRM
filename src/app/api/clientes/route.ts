@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
         `*,
         contacto:contactos(id, nombre, apellido, email, telefono),
         plan:planes(id, nombre, precio),
-        plantilla:plantillas(id, nombre),
         etiqueta_negocio:etiquetas_negocio(id, nombre),
         usuario_creador:usuarios!clientes_created_by_fkey(id, nombre, apellido)`,
         { count: "exact" }

@@ -9,7 +9,7 @@ import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
-import type { Cliente, Contacto, Plan, Plantilla, EtiquetaNegocio } from "@/types";
+import type { Cliente, Contacto, Plan, EtiquetaNegocio } from "@/types";
 
 function CopyButton({ value, field, copied, onCopy }: {
   value: string;
@@ -99,12 +99,11 @@ export default function ClienteDetallePage() {
 
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
-  const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [etiquetas, setEtiquetas] = useState<EtiquetaNegocio[]>([]);
 
   const [form, setForm] = useState({
     nombre_empresa: "", contacto_id: "", dominio: "", plan_id: "",
-    plantilla_id: "", etiqueta_negocio_id: "", fecha_pago: "", tenant_id: "",
+    etiqueta_negocio_id: "", fecha_pago: "", tenant_id: "",
   });
 
   // SitioHoy platform state
@@ -155,7 +154,6 @@ export default function ClienteDetallePage() {
             contacto_id: c.contacto_id || "",
             dominio: c.dominio || "",
             plan_id: c.plan_id || "",
-            plantilla_id: c.plantilla_id || "",
             etiqueta_negocio_id: c.etiqueta_negocio_id || "",
             fecha_pago: c.fecha_pago?.split("T")[0] || "",
             tenant_id: c.tenant_id || "",
@@ -221,12 +219,10 @@ export default function ClienteDetallePage() {
     Promise.all([
       fetch("/api/contactos?limit=500").then(r => r.json()),
       fetch("/api/catalogos/planes").then(r => r.json()),
-      fetch("/api/plantillas").then(r => r.json()),
       fetch("/api/catalogos/etiquetas-negocio").then(r => r.json()),
-    ]).then(([c, p, pl, e]) => {
+    ]).then(([c, p, e]) => {
       setContactos(c.data || []);
       setPlanes(p.data || []);
-      setPlantillas(pl.data || []);
       setEtiquetas(e.data || []);
     });
   }
@@ -437,20 +433,12 @@ export default function ClienteDetallePage() {
             onChange={(val) => updateField("contacto_id", val)}
           />
           <Input label="Dominio" value={form.dominio} onChange={(e) => updateField("dominio", e.target.value)} placeholder="Ej: gymforce.com (opcional)" />
-          <div className="grid grid-cols-2 gap-4">
-            <SearchableSelect
-              label="Plan" required
-              options={planes.map(p => ({ value: p.id, label: `${p.nombre} ($${Number(p.precio).toLocaleString("es-AR")})` }))}
-              placeholder="Seleccionar" value={form.plan_id}
-              onChange={(val) => updateField("plan_id", val)}
-            />
-            <SearchableSelect
-              label="Plantilla"
-              options={plantillas.map(p => ({ value: p.id, label: p.nombre }))}
-              placeholder="Seleccionar (opcional)" value={form.plantilla_id}
-              onChange={(val) => updateField("plantilla_id", val)}
-            />
-          </div>
+          <SearchableSelect
+            label="Plan" required
+            options={planes.map(p => ({ value: p.id, label: `${p.nombre} ($${Number(p.precio).toLocaleString("es-AR")})` }))}
+            placeholder="Seleccionar" value={form.plan_id}
+            onChange={(val) => updateField("plan_id", val)}
+          />
           {(() => {
             const selectedPlan = planes.find(p => p.id === form.plan_id);
             const benefits = selectedPlan?.beneficios
@@ -538,10 +526,6 @@ export default function ClienteDetallePage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-muted">Plantilla</dt>
-                  <dd className="text-sm font-medium text-heading">{cliente.plantilla?.nombre || "-"}</dd>
-                </div>
-                <div>
                   <dt className="text-sm text-muted">Fecha de pago</dt>
                   <dd className="text-sm font-medium text-heading">
                     {new Date(cliente.fecha_pago).toLocaleDateString("es-AR")}
@@ -578,19 +562,6 @@ export default function ClienteDetallePage() {
                       </div>
                     </div>
                     <div className="space-y-4">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Información del sitio</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input label="Nombre" value={shForm.name} onChange={e => updateShField("name", e.target.value)} />
-                        <Input label="Slug" value={shForm.slug} onChange={e => updateShField("slug", e.target.value)} />
-                      </div>
-                      <Input label="URL" value={shForm.url} onChange={e => updateShField("url", e.target.value)} />
-                      <div className="grid grid-cols-3 gap-4">
-                        <SearchableSelect label="Plan" options={SH_PLAN_OPTIONS} placeholder="Seleccionar" value={shForm.plan} onChange={val => { updateShField("plan", val); const max = val === "empresa" ? "" : val === "emprendimiento" ? "200" : "50"; updateShField("max_products", max); }} />
-                        <SearchableSelect label="Estado" options={SH_STATUS_OPTIONS} placeholder="Seleccionar" value={shForm.status} onChange={val => updateShField("status", val)} />
-                        <Input label="Máx. productos" type="number" value={shForm.max_products} onChange={e => updateShField("max_products", e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="space-y-4">
                       <p className="text-xs font-semibold text-muted uppercase tracking-wider">Origen de envíos</p>
                       <div className="grid grid-cols-2 gap-4">
                         <Input label="Nombre de origen" value={shForm.origin_name} onChange={e => updateShField("origin_name", e.target.value)} />
@@ -619,7 +590,7 @@ export default function ClienteDetallePage() {
                   <div className="bg-card rounded-xl border border-edge p-6 space-y-5">
                     <div className="flex items-center justify-between">
                       <h2 className="text-sm font-semibold text-heading">SitioHoy</h2>
-                      <Button onClick={() => setShEditing(true)}>Editar</Button>
+                      <Button onClick={() => setShEditing(true)}>Editar credenciales</Button>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Información del sitio</p>
