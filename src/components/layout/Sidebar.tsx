@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useNewTicketCount, dispatchTicketsReset } from "@/stores/ticketStore";
+import { useUnreadChatCount, dispatchChatUnreadReset } from "@/stores/chatStore";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm11 0h7v7h-7v-7z" },
@@ -20,6 +21,7 @@ const navigation = [
     ],
   },
   { name: "Tickets", href: "/solicitudes", icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" },
+  { name: "Chats", href: "/chats", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" },
   { name: "Caja", href: "/caja", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { name: "Estadísticas", href: "/estadisticas", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
   { name: "Calendario", href: "/calendario", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
@@ -31,6 +33,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const newTicketCount = useNewTicketCount();
+  const unreadChatCount = useUnreadChatCount();
 
   return (
     <aside className="w-60 glass border-r border-edge min-h-screen flex flex-col sticky top-0 h-screen z-50">
@@ -63,7 +66,10 @@ export default function Sidebar() {
             <div key={item.name}>
               <Link
                 href={item.href}
-                onClick={() => { if (item.href === "/solicitudes") dispatchTicketsReset(); }}
+                onClick={() => {
+                if (item.href === "/solicitudes") dispatchTicketsReset();
+                if (item.href === "/chats") dispatchChatUnreadReset();
+              }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${isActive || isCatalogActive
                   ? "bg-accent/10 text-accent"
                   : "text-body hover:bg-elevated hover:text-heading"
@@ -89,6 +95,11 @@ export default function Sidebar() {
                 {item.href === "/solicitudes" && newTicketCount > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center">
                     {newTicketCount > 99 ? "99+" : newTicketCount}
+                  </span>
+                )}
+                {item.href === "/chats" && unreadChatCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadChatCount > 99 ? "99+" : unreadChatCount}
                   </span>
                 )}
               </Link>

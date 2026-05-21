@@ -48,6 +48,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 const SOURCE_LABELS: Record<string, string> = {
   password_reset_request: "Cambio de contraseña",
   support_billing: "Soporte / Facturación",
+  contact_form: "Formulario de contacto",
 };
 
 const TENANT_STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -103,6 +104,8 @@ export default function SolicitudDetallePage() {
   const [resolving, setResolving] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -132,6 +135,24 @@ export default function SolicitudDetallePage() {
       setToast({ message: labels[newStatus] || "Estado actualizado", type: "success" });
     } else {
       setToast({ message: "Error al actualizar el estado", type: "error" });
+    }
+  }
+
+  async function handleSendReply() {
+    if (!replyBody.trim()) return;
+    setSendingReply(true);
+    const res = await fetch(`/api/solicitudes/${id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: replyBody }),
+    });
+    setSendingReply(false);
+    if (res.ok) {
+      setReplyBody("");
+      setToast({ message: "Respuesta enviada al cliente por email", type: "success" });
+    } else {
+      const json = await res.json();
+      setToast({ message: json.error || "Error al enviar la respuesta", type: "error" });
     }
   }
 
@@ -208,6 +229,30 @@ export default function SolicitudDetallePage() {
           <div className="bg-card rounded-xl border border-edge p-6">
             <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">Mensaje</h2>
             <p className="text-body leading-relaxed whitespace-pre-wrap text-sm">{solicitud.message}</p>
+          </div>
+
+          {/* Responder */}
+          <div className="bg-card rounded-xl border border-edge p-6">
+            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">Responder por email</h2>
+            <textarea
+              value={replyBody}
+              onChange={e => setReplyBody(e.target.value)}
+              placeholder={`Escribí tu respuesta para ${solicitud.name}…`}
+              rows={5}
+              className="w-full bg-elevated border border-edge rounded-lg px-4 py-3 text-sm text-body placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+            />
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-muted">
+                Se enviará a <span className="text-accent">{solicitud.email}</span>
+              </p>
+              <Button
+                onClick={handleSendReply}
+                loading={sendingReply}
+                disabled={!replyBody.trim()}
+              >
+                Enviar respuesta
+              </Button>
+            </div>
           </div>
 
           {/* Remitente */}
