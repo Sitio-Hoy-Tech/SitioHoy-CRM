@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { dispatchNewTicket } from "@/stores/ticketStore";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -28,6 +28,29 @@ function escapeHtml(str: string) {
 export default function TicketNotifier() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const showBrowserNotification = useCallback(
+    (ticket: NewTicket) => {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const source = SOURCE_LABELS[ticket.source ?? ""] ?? ticket.source ?? "Sin origen";
+      const notif = new Notification(`Nuevo ticket — ${ticket.name}`, {
+        body: `${source}\n${ticket.message}`,
+        icon: "/logo-sitio-hoy.png",
+      });
+      notif.onclick = () => {
+        window.focus();
+        router.push(`/solicitudes/${ticket.id}`);
+        notif.close();
+      };
+    },
+    [router]
+  );
 
   const showToast = useCallback((ticket: NewTicket) => {
     if (!containerRef.current) return;
@@ -86,21 +109,18 @@ export default function TicketNotifier() {
   }, [router]);
 
   useEffect(() => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SITIOHOY_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SITIOHOY_SUPABASE_ANON_KEY!
-    );
-
     const channel = supabase
       .channel("crm-new-tickets")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "contact_messages" },
+        { event: "INSERT", schema: "public", table: "tickets" },
         (payload) => {
           const ticket = payload.new as NewTicket;
-          if (ticket.source === "contact_form") return;
           dispatchNewTicket();
           showToast(ticket);
+          if (document.hidden || !document.hasFocus()) {
+            showBrowserNotification(ticket);
+          }
         }
       )
       .subscribe();
@@ -108,7 +128,7 @@ export default function TicketNotifier() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [showToast]);
+  }, [showToast, showBrowserNotification]);
 
   return (
     <div

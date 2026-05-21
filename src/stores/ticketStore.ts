@@ -17,7 +17,14 @@ export function useNewTicketCount() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const onNew = () => setCount(n => n + 1);
+    fetch("/api/solicitudes/nuevos")
+      .then((r) => r.json())
+      .then(({ count: initial }) => {
+        if (typeof initial === "number") setCount(initial);
+      })
+      .catch(() => {});
+
+    const onNew = () => setCount((n) => n + 1);
     const onReset = () => setCount(0);
     window.addEventListener(TICKET_EVENT, onNew);
     window.addEventListener(TICKET_RESET_EVENT, onReset);

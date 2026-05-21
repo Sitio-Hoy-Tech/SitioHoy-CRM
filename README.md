@@ -31,13 +31,12 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 **Características clave:**
 - Gestión completa de contactos y clientes con CRUD y filtros avanzados
 - Seguimiento manual de interacciones con notas y timestamps
-- Plantillas HTML de email reutilizables
 - Catálogos configurables (planes, estados, etiquetas)
 - Dashboard con métricas en tiempo real via Supabase Realtime
 - Auditoría completa de cambios con diffs JSONB
 - Integración multi-tenant con la plataforma SitioHoy
 - Soft delete en todas las entidades
-- Sistema de tickets en tiempo real con notificaciones push
+- Sistema de tickets en tiempo real con notificaciones del sistema operativo
 - Sección de Caja con MRR automático, gastos manuales e historial mensual
 - Envío de email personalizado para recuperación de contraseña via Resend
 
@@ -69,19 +68,19 @@ Usuario → NextAuth (JWT) → Next.js App Router → Supabase CRM (nepjzwwkzsfe
                             API Routes (REST)
                                     ↓
                      Supabase Service Role (server-side)
-                     Supabase Anon Key (client-side)
+                     Supabase Anon Key (client-side Realtime)
                                     ↓
-                         Supabase Realtime (WebSocket)
+                         Supabase Realtime (WebSocket) → tabla tickets
 
-Browser → WebSocket → Supabase SitioHoy Realtime (tickets en tiempo real)
+Plataforma SitioHoy → POST /api/webhooks/ticket → tabla tickets (CRM DB)
 API Routes → Supabase SitioHoy Admin API → Resend (emails de recuperación)
 pg_cron (Supabase) → snapshot MRR diario a las 23:00 UTC
 ```
 
 - **Rendering**: Server Components por defecto, Client Components solo donde hay interactividad
-- **Auth**: JWT sessions via NextAuth, middleware protege rutas automáticamente
+- **Auth**: JWT sessions via NextAuth, middleware en `src/proxy.ts` protege todas las rutas del dashboard (excluye `/api/webhooks/*` que usan su propio mecanismo de autenticación por header)
 - **DB access**: Service role key en API routes (server), anon key + RLS en cliente
-- **Real-time tickets**: WebSocket directo browser → Supabase SitioHoy (sin pasar por Vercel)
+- **Tickets**: La plataforma SitioHoy envía nuevos tickets via webhook HTTP al CRM. El CRM los almacena en su propia tabla `tickets` y los sirve via Supabase Realtime al browser
 - **Real-time dashboard**: Supabase Realtime subscriptions para contactos, clientes y seguimientos
 - **MRR**: Calculado en vivo para el mes actual, snapshots históricos para meses pasados
 
@@ -106,10 +105,6 @@ src/
 │   │   │   ├── nuevo/page.tsx
 │   │   │   ├── archivados/page.tsx  # Clientes archivados (restaurar / eliminar)
 │   │   │   └── [id]/page.tsx     # Detalle + sección SitioHoy + zona de peligro
-│   │   ├── plantillas/
-│   │   │   ├── page.tsx
-│   │   │   ├── nuevo/page.tsx
-│   │   │   └── [id]/page.tsx
 │   │   ├── catalogos/
 │   │   │   ├── planes/page.tsx
 │   │   │   ├── estados-contacto/page.tsx
@@ -140,9 +135,6 @@ src/
 │   │   │       ├── route.ts                    # GET / PUT / DELETE (soft)
 │   │   │       ├── restore/route.ts            # POST — restaurar archivado
 │   │   │       └── delete-permanent/route.ts   # POST — borrado total con purga SitioHoy
-│   │   ├── plantillas/
-│   │   │   ├── route.ts
-│   │   │   └── [id]/route.ts
 │   │   ├── catalogos/
 │   │   │   ├── estados-contacto/route.ts + [id]/route.ts
 │   │   │   ├── etiquetas-negocio/route.ts + [id]/route.ts
@@ -151,10 +143,13 @@ src/
 │   │   ├── usuarios/route.ts + [id]/route.ts
 │   │   ├── auditoria/route.ts
 │   │   ├── solicitudes/
-│   │   │   ├── route.ts              # GET tickets con filtros
+│   │   │   ├── route.ts              # GET tickets con filtros (DB CRM)
+│   │   │   ├── nuevos/route.ts       # GET conteo de tickets con status=new
 │   │   │   └── [id]/
 │   │   │       ├── route.ts          # GET / PATCH estado
 │   │   │       └── reset-password/route.ts  # POST — envía email de recuperación via Resend
+│   │   ├── webhooks/
+│   │   │   └── ticket/route.ts       # POST — recibe nuevos tickets desde SitioHoy
 │   │   ├── caja/
 │   │   │   ├── resumen/route.ts      # GET resumen mensual (MRR + gastos + tendencia)
 │   │   │   └── gastos/
@@ -172,7 +167,7 @@ src/
 │   ├── layout/
 │   │   ├── Sidebar.tsx
 │   │   ├── Providers.tsx
-│   │   └── TicketNotifier.tsx    # WebSocket Realtime + toasts de nuevos tickets
+│   │   └── TicketNotifier.tsx    # WebSocket Realtime (CRM DB) + toasts + notificaciones del SO
 │   ├── common/
 │   │   ├── Button.tsx
 │   │   ├── Input.tsx
@@ -190,23 +185,29 @@ src/
 │   │   └── DashboardRealtimeManager.tsx
 │   └── CatalogoCRUD.tsx
 ├── stores/
-│   └── ticketStore.ts            # Eventos custom para contador y refresh de tickets
+│   └── ticketStore.ts            # Contador de tickets: inicializa desde DB, incrementa via Realtime
 ├── lib/
 │   ├── auth.ts
-│   ├── supabase.ts
+│   ├── supabase.ts               # supabaseAdmin (service role) + supabase (anon, client-side)
 │   ├── supabase-sitiohoy.ts      # Cliente service role para DB de SitioHoy
-│   ├── supabaseAdmin.ts
 │   └── mrr.ts                    # tomarSnapshotMRR() — upsert snapshot mensual
 ├── types/
 │   └── index.ts
-└── proxy.ts
+└── proxy.ts                      # Middleware NextAuth — protege rutas del dashboard
 ```
 
 ---
 
 ## Base de datos
 
-### Tablas principales
+El CRM usa dos bases de datos Supabase separadas:
+
+| Proyecto | ID | Uso |
+|----------|----|-----|
+| **SitioHoy CRM** | `nepjzwwkzsfegapvttgv` | Todas las tablas del CRM |
+| **SitioHoy** | `suvpddgmhyjmixvcbpqc` | Plataforma multi-tenant (tenants, contact_messages) |
+
+### Tablas principales (CRM DB)
 
 #### `usuarios`
 | Columna | Tipo | Descripción |
@@ -243,7 +244,6 @@ src/
 | contacto_id | UUID FK | → contactos |
 | dominio | VARCHAR UNIQUE | Dominio del cliente |
 | plan_id | UUID FK | → planes |
-| plantilla_id | UUID FK | → plantillas |
 | etiqueta_negocio_id | UUID FK | → etiquetas_negocio |
 | tenant_id | VARCHAR UNIQUE | ID multi-tenant plataforma SitioHoy |
 | fecha_pago | DATE | Última fecha de pago |
@@ -251,6 +251,22 @@ src/
 | estado | ENUM | `active` / `inactive` |
 | created_by | UUID FK | → usuarios |
 | deleted_at | TIMESTAMPTZ | Soft delete |
+
+#### `tickets`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | Mismo ID que en `contact_messages` de SitioHoy |
+| tenant_id | UUID | ID del tenant que generó el ticket |
+| name | TEXT | Nombre del remitente |
+| email | TEXT | Email del remitente |
+| phone | TEXT | Teléfono (opcional) |
+| message | TEXT | Cuerpo del mensaje |
+| source | TEXT | `password_reset_request` / `support_billing` / `support_technical` / etc. |
+| status | TEXT | `new` / `read` / `reopened` / `archived` |
+| created_at | TIMESTAMPTZ | — |
+| updated_at | TIMESTAMPTZ | — |
+
+> Los tickets llegan al CRM desde la plataforma SitioHoy via webhook HTTP (`POST /api/webhooks/ticket`). La tabla `contact_messages` de SitioHoy queda exclusivamente para formularios de contacto de los sitios de los clientes (`source = 'contact_form'`).
 
 #### `seguimiento_contactos`
 | Columna | Tipo | Descripción |
@@ -299,7 +315,6 @@ src/
 - **`estados_contacto`**: id, nombre (UNIQUE) — ej: "Posible cliente", "Cliente"
 - **`etiquetas_negocio`**: id, nombre (UNIQUE) — ej: "Gimnasio", "Restaurante"
 - **`etiquetas_plantillas`**: id, nombre (UNIQUE) — categorías de templates
-- **`plantillas`**: id, nombre, html (TEXT), etiqueta_plantilla_id, created_by
 
 ### Triggers
 
@@ -310,18 +325,24 @@ src/
 
 | Job | Schedule | Descripción |
 |-----|----------|-------------|
-| `mrr-snapshot-diario` | `0 23 * * *` | Ejecuta `tomar_snapshot_mrr()` todos los días a las 23:00 UTC para garantizar snapshots históricos de MRR
+| `mrr-snapshot-diario` | `0 23 * * *` | Ejecuta `tomar_snapshot_mrr()` todos los días a las 23:00 UTC para garantizar snapshots históricos de MRR |
 
 ### Índices
 
 - `contactos`: estado_id, etiqueta_negocio_id, email, fecha_contacto, origen
 - `audit_log`: usuario_id, tabla_afectada, created_at
+- `tickets`: tenant_id, status, created_at DESC
 
 ### Row Level Security (RLS)
 
-Habilitado en todas las tablas. Políticas actuales (MVP simplificado):
-- Usuarios autenticados leen y escriben en sus tablas correspondientes
-- `audit_log`: solo acceso para rol `admin`
+| Tabla | Política |
+|-------|----------|
+| `clientes`, `contactos`, `seguimiento_contactos` | SELECT público para Supabase Realtime |
+| `tickets` | SELECT público para Realtime + RESTRICTIVE deny-all para anon/authenticated |
+| `caja_gastos` | RESTRICTIVE deny-all (solo service role) |
+| `caja_mrr_snapshots` | RESTRICTIVE deny-all (solo service role) |
+
+Todo el acceso legítimo desde el backend usa `supabaseAdmin` (service role key) que bypasea RLS por diseño de Postgres.
 
 El esquema completo está en `supabase.sql` en la raíz del proyecto.
 
@@ -329,7 +350,7 @@ El esquema completo está en `supabase.sql` en la raíz del proyecto.
 
 ## Autenticación
 
-**Provider**: NextAuth.js v5 con Credentials (email + password)  
+**Provider**: NextAuth.js v5 con Credentials (email + password)
 **Sessions**: JWT (no database sessions)
 
 ### Flujo
@@ -338,19 +359,20 @@ El esquema completo está en `supabase.sql` en la raíz del proyecto.
 2. `authorize()` en `src/lib/auth.ts` consulta la tabla `usuarios` en Supabase
 3. `bcrypt.compare()` verifica el password contra `password_hash`
 4. JWT se genera con `{ id, name, email, role }`
-5. Middleware en `middleware.ts` protege todas las rutas del dashboard
+5. Middleware en `src/proxy.ts` protege todas las rutas del dashboard
 
 ### Middleware de protección
 
 ```
-/login   → redirige a /  si ya está autenticado
-/*       → redirige a /login si no hay sesión
-/_next/* → bypass (archivos estáticos)
+/login           → redirige a /  si ya está autenticado
+/api/webhooks/*  → excluido del middleware (autenticación propia via x-webhook-secret)
+/*               → redirige a /login si no hay sesión
+/_next/*         → bypass (archivos estáticos)
 ```
 
 ### Registro de usuarios
 
-Endpoint: `POST /api/auth/signup`  
+Endpoint: `POST /api/auth/signup`
 Solo disponible para usuarios con rol `admin` desde la interfaz de `/usuarios`.
 
 ---
@@ -396,7 +418,7 @@ Todas las rutas retornan JSON. Los errores siguen el formato `{ error: string }`
 - `plan_id`, `etiqueta_negocio_id` — filtros exactos
 - `page`, `limit` — paginación
 
-**POST /api/clientes/[id]/delete-permanent:**  
+**POST /api/clientes/[id]/delete-permanent:**
 Elimina permanentemente el registro del CRM y purga todos los datos del tenant en la plataforma SitioHoy en orden seguro de FK: eventos de órdenes → órdenes → imágenes y variantes de productos → productos → subcategorías → categorías → cupones / mensajes / zonas de envío → `user_tenants` → usuarios de Auth → tenant.
 
 ### SitioHoy Tenants
@@ -409,15 +431,48 @@ Elimina permanentemente el registro del CRM y purga todos los datos del tenant e
 | POST | `/api/sitiohoy/tenants/[tenant_id]/users` | Crear usuario en Auth + vincular al tenant |
 | PATCH | `/api/sitiohoy/tenants/[tenant_id]/users/[user_id]` | Cambiar email y/o contraseña de un usuario |
 
-### Plantillas
+### Tickets (Solicitudes)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/plantillas` | Lista |
-| POST | `/api/plantillas` | Crear |
-| GET | `/api/plantillas/[id]` | Obtener |
-| PUT | `/api/plantillas/[id]` | Actualizar |
-| DELETE | `/api/plantillas/[id]` | Soft delete |
+| GET | `/api/solicitudes` | Lista con filtros y paginación |
+| GET | `/api/solicitudes/nuevos` | Conteo de tickets con `status = new` |
+| GET | `/api/solicitudes/[id]` | Detalle del ticket con info del tenant y contacto CRM |
+| PATCH | `/api/solicitudes/[id]` | Cambiar estado del ticket |
+| POST | `/api/solicitudes/[id]/reset-password` | Enviar email de recuperación via Resend |
+
+**Filtros disponibles en GET /api/solicitudes:**
+- `source` — origen del ticket
+- `status` — `new` / `read` / `reopened` / `archived`
+- `search` — búsqueda en nombre, email o mensaje
+- `date_from`, `date_to` — rango de fechas
+- `page`, `limit` — paginación (default: 20/página)
+
+### Webhook de tickets
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/webhooks/ticket` | Recibe nuevos tickets desde la plataforma SitioHoy |
+
+**Autenticación:** header `x-webhook-secret` con el valor de `WEBHOOK_SECRET`.
+**Body esperado:**
+```json
+{
+  "record": {
+    "id": "uuid",
+    "tenant_id": "uuid",
+    "name": "string",
+    "email": "string",
+    "phone": "string | null",
+    "message": "string",
+    "source": "string",
+    "status": "new",
+    "created_at": "ISO timestamp",
+    "updated_at": "ISO timestamp"
+  }
+}
+```
+Registros con `source = 'contact_form'` son ignorados. La ruta está excluida del middleware de auth de NextAuth.
 
 ### Catálogos
 
@@ -473,13 +528,16 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/
 SITIOHOY_SUPABASE_URL=https://tu-proyecto-sitiohoy.supabase.co
 SITIOHOY_SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_sitiohoy
 NEXT_PUBLIC_SITIOHOY_SUPABASE_URL=https://tu-proyecto-sitiohoy.supabase.co
-NEXT_PUBLIC_SITIOHOY_SUPABASE_ANON_KEY=tu_anon_key_sitiohoy  # Usado para Realtime en browser
+NEXT_PUBLIC_SITIOHOY_SUPABASE_ANON_KEY=tu_anon_key_sitiohoy
 
 # URL del panel de clientes SitioHoy (para redirect de recuperación de contraseña)
 SITIOHOY_APP_URL=https://admin.sitiohoy.com.ar
 
 # Resend (envío de emails transaccionales)
 RESEND_API_KEY=tu_api_key_resend
+
+# Webhook secret — autentica los POSTs de la plataforma SitioHoy al endpoint /api/webhooks/ticket
+WEBHOOK_SECRET=genera_con_openssl_rand_-hex_32
 
 # Cron secret (protege el endpoint /api/cron/mrr-snapshot si se usa en Vercel Pro)
 CRON_SECRET=genera_con_openssl_rand_-hex_32
@@ -492,9 +550,9 @@ NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://analytics.umami.is/script.js
 NEXT_PUBLIC_CALENDLY_USERNAME=tu_username_calendly
 ```
 
-Para generar `NEXTAUTH_SECRET`:
+Para generar secrets:
 ```bash
-openssl rand -base64 32
+openssl rand -hex 32
 ```
 
 ---
@@ -550,15 +608,15 @@ La aplicación estará disponible en [http://localhost:3000](http://localhost:30
 
 1. Conectar el repositorio en [vercel.com](https://vercel.com)
 2. Configurar todas las variables de entorno en el dashboard de Vercel
-3. Cambiar `NEXTAUTH_URL` y `NEXT_PUBLIC_API_URL` al dominio de producción
+3. Cambiar `NEXTAUTH_URL` y `NEXT_PUBLIC_API_URL` al dominio de producción (`https://crm.sitiohoy.com.ar`)
 4. Deploy automático en cada push a `main`
 
 ### Variables de entorno en producción
 
 Mismas que en desarrollo, con estos cambios:
-- `NEXTAUTH_URL` → URL de producción (ej: `https://crm.sitiohoy.com`)
-- `NEXT_PUBLIC_API_URL` → URL de producción
-- Mismas keys de Supabase (o keys de un proyecto Supabase de producción separado)
+- `NEXTAUTH_URL` → `https://crm.sitiohoy.com.ar`
+- `NEXT_PUBLIC_API_URL` → `https://crm.sitiohoy.com.ar`
+- `WEBHOOK_SECRET` → el mismo valor configurado en `crm_webhook_config` de la DB de SitioHoy
 
 ---
 
@@ -592,12 +650,6 @@ Mismas que en desarrollo, con estos cambios:
   - *Borrar permanentemente* — elimina el registro del CRM y purga todos los datos del tenant en SitioHoy; requiere escribir el nombre exacto del cliente para confirmar (estilo GitHub/Vercel)
 - **Gestión de usuarios SitioHoy** desde el detalle del cliente: ver usuarios vinculados al tenant, crear nuevos con email y contraseña, y editar email/contraseña de usuarios existentes
 
-### Plantillas HTML
-
-- Editor de HTML para templates de email
-- Categorización por etiqueta de plantilla
-- Vista previa del HTML
-
 ### Catálogos
 
 - Planes: nombre, beneficios, precio
@@ -610,10 +662,11 @@ Mismas que en desarrollo, con estos cambios:
 - Lista de tickets recibidos desde la plataforma SitioHoy con filtros por estado y origen
 - Estados: **Nuevo**, **En revisión**, **Reabierto**, **Solucionado**
 - Página de detalle con información completa del remitente, tenant y metadata del ticket
+- La columna Teléfono muestra el dato del formulario; si no está, hace fallback al teléfono del contacto CRM vinculado por `tenant_id`
 - Cambio de estado desde la página de detalle (panel lateral + botones en header)
 - Registro automático en auditoría al cambiar el estado de un ticket
-- **Notificaciones en tiempo real**: WebSocket directo browser → Supabase Realtime; al llegar un ticket nuevo aparece un toast animado clickeable que navega al detalle
-- Badge en el sidebar con contador de tickets nuevos no vistos
+- **Notificaciones en tiempo real**: cuando llega un ticket nuevo aparece un toast animado clickeable en la esquina inferior derecha que navega al detalle; si el tab no está activo, se muestra además una notificación nativa del sistema operativo con el logo de SitioHoy (requiere permiso del navegador)
+- Badge en el sidebar con contador de tickets nuevos: se inicializa al montar consultando los tickets con `status = new` en la DB, y se incrementa en tiempo real via Realtime
 - **Flujo de cambio de contraseña**: en tickets de tipo `password_reset_request`, botón "Enviar link de recuperación" → genera link via `auth.admin.generateLink()` → envía email personalizado HTML via Resend; el ticket se marca como solucionado automáticamente
 
 ### Caja
@@ -631,7 +684,7 @@ Mismas que en desarrollo, con estos cambios:
 ### Auditoría
 
 - Log completo de todas las operaciones CREATE, UPDATE, DELETE
-- Incluye cambios de estado de tickets (`contact_messages`)
+- Incluye cambios de estado de tickets
 - Diffs JSONB con estado anterior y nuevo
 - Filtros por usuario, tabla, acción y fecha
 - Acceso restringido a rol `admin`
@@ -649,35 +702,49 @@ Mismas que en desarrollo, con estos cambios:
 | Rol | Acceso |
 |-----|--------|
 | `admin` | Acceso completo: usuarios, auditoría, catálogos, todo el CRM |
-| `manager` | CRM completo (contactos, clientes, plantillas, catálogos) |
+| `manager` | CRM completo (contactos, clientes, catálogos) |
 | `sales` | Contactos y clientes (sin administración de usuarios ni auditoría) |
 
 ---
 
 ## Integraciones
 
-### Supabase Realtime
+### Supabase Realtime — Dashboard
 
 El componente `DashboardRealtimeManager` se suscribe a cambios en las tablas `contactos`, `clientes` y `seguimiento_contactos`, actualizando las métricas del dashboard en tiempo real sin necesidad de refrescar la página.
 
-### Plataforma SitioHoy (multi-tenant)
-
-El campo `tenant_id` en `clientes` enlaza cada cliente CRM con su tenant en la base de datos de la plataforma SitioHoy (proyecto Supabase separado). Desde el detalle del cliente el CRM puede:
-
-- Consultar y editar datos del tenant (`GET / PATCH /api/sitiohoy/tenants/[tenant_id]`)
-- Listar usuarios vinculados al tenant — consulta la tabla `user_tenants` para obtener todos los usuarios reales, con fallback al campo `owner_id` del tenant (`GET /api/sitiohoy/tenants/[tenant_id]/users`)
-- Crear nuevos usuarios de Auth y vincularlos automáticamente en `user_tenants` (`POST`)
-- Cambiar email y/o contraseña de usuarios existentes via Admin API (`PATCH /api/sitiohoy/tenants/[tenant_id]/users/[user_id]`)
-
 ### Supabase Realtime — Tickets
 
-`TicketNotifier` se monta en el layout del dashboard y abre un WebSocket directo al proyecto Supabase de SitioHoy usando la anon key pública. Se suscribe a eventos INSERT en `contact_messages`. Al llegar un ticket nuevo:
+`TicketNotifier` se monta en el layout del dashboard y abre un WebSocket al proyecto Supabase del CRM usando la anon key pública. Se suscribe a eventos INSERT en la tabla `tickets`. Al llegar un ticket nuevo:
 1. Dispara un evento custom `crm:new-ticket` via `window.dispatchEvent`
-2. El sidebar lo captura y muestra un badge con el conteo
+2. El sidebar lo captura y muestra un badge con el conteo acumulado
 3. Aparece un toast animado en la esquina inferior derecha, clickeable para ir al detalle
-4. Al entrar a la sección de Tickets el contador se resetea
+4. Si el tab no tiene foco, se dispara adicionalmente una notificación nativa del SO
+5. Al entrar a la sección de Tickets el contador se resetea
 
-La suscripción requiere la política RLS `anon_select_realtime` en `contact_messages` del proyecto SitioHoy (habilitada en migración).
+El contador se inicializa al montar consultando `/api/solicitudes/nuevos` (tickets con `status = new` en la DB), por lo que el badge persiste correctamente al reabrir el CRM.
+
+### Plataforma SitioHoy — Webhook de tickets
+
+La plataforma SitioHoy envía los tickets de soporte directamente al CRM via `POST /api/webhooks/ticket`. El endpoint valida el header `x-webhook-secret` e inserta el registro en la tabla `tickets` del CRM. La tabla `contact_messages` de SitioHoy queda exclusivamente para formularios de contacto (`source = 'contact_form'`).
+
+La configuración del webhook en la DB de SitioHoy se administra en la tabla `crm_webhook_config`:
+```sql
+-- Ver configuración actual
+SELECT * FROM crm_webhook_config;
+
+-- Actualizar URL (ej: si cambia el dominio del CRM)
+UPDATE crm_webhook_config SET value = 'https://crm.sitiohoy.com.ar/api/webhooks/ticket' WHERE key = 'url';
+```
+
+### Plataforma SitioHoy — Gestión de tenants
+
+El campo `tenant_id` en `clientes` enlaza cada cliente CRM con su tenant en la base de datos de la plataforma SitioHoy. Desde el detalle del cliente el CRM puede:
+
+- Consultar y editar datos del tenant (`GET / PATCH /api/sitiohoy/tenants/[tenant_id]`)
+- Listar usuarios vinculados al tenant con fallback al campo `owner_id` del tenant (`GET`)
+- Crear nuevos usuarios de Auth y vincularlos automáticamente en `user_tenants` (`POST`)
+- Cambiar email y/o contraseña de usuarios existentes via Admin API (`PATCH`)
 
 ### Resend — Email transaccional
 

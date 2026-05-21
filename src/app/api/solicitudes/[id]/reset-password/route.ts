@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { supabaseAdmin } from "@/lib/supabase";
 import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { getSessionUser } from "@/lib/api";
 
@@ -132,8 +133,8 @@ export async function POST(
     await getSessionUser();
     const { id } = await params;
 
-    const { data: ticket, error: ticketError } = await supabaseSitioHoy
-      .from("contact_messages")
+    const { data: ticket, error: ticketError } = await supabaseAdmin
+      .from("tickets")
       .select("id, name, email, source")
       .eq("id", id)
       .single();

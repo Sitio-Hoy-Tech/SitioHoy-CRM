@@ -35,7 +35,7 @@ type Solicitud = {
   created_at: string;
   updated_at: string | null;
   tenant: Tenant | null;
-  crm_cliente: { id: string; nombre_empresa: string } | null;
+  crm_cliente: { id: string; nombre_empresa: string; contacto: { telefono: string | null } | null } | null;
 };
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -221,14 +221,16 @@ export default function SolicitudDetallePage() {
                 </a>
                 <CopyButton value={solicitud.email} />
               </Field>
-              {solicitud.phone && (
-                <Field label="Teléfono">
-                  <a href={`tel:${solicitud.phone}`} className="text-accent hover:underline">
-                    {solicitud.phone}
-                  </a>
-                  <CopyButton value={solicitud.phone} />
-                </Field>
-              )}
+              {(() => {
+                const phone = solicitud.phone || solicitud.crm_cliente?.contacto?.telefono || null;
+                if (!phone) return null;
+                return (
+                  <Field label="Teléfono">
+                    <a href={`tel:${phone}`} className="text-accent hover:underline">{phone}</a>
+                    <CopyButton value={phone} />
+                  </Field>
+                );
+              })()}
             </dl>
           </div>
 

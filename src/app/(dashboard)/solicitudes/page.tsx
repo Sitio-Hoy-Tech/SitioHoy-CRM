@@ -14,6 +14,7 @@ type Solicitud = {
   name: string;
   email: string;
   phone: string | null;
+  crm_phone: string | null;
   message: string;
   source: string | null;
   status: string | null;
@@ -203,7 +204,7 @@ export default function SolicitudesPage() {
                         {s.email}
                       </a>
                     </td>
-                    <td className="px-4 py-3 text-body">{s.tenant?.origin_phone ?? <span className="text-muted">—</span>}</td>
+                    <td className="px-4 py-3 text-body">{s.phone || s.tenant?.origin_phone || s.crm_phone || <span className="text-muted">—</span>}</td>
                     <td className="px-4 py-3 text-body max-w-[220px]">
                       <p className="truncate" title={s.message}>{s.message}</p>
                     </td>
