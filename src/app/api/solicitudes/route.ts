@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Batch-fetch tenant info from SitioHoy
-    const tenantIds = [...new Set((data || []).map((t) => t.tenant_id).filter(Boolean))];
+    const tenantIds = [...new Set((data || []).map((t: { tenant_id: string }) => t.tenant_id).filter(Boolean))];
     const tenantById: Record<string, { id: string; name: string; origin_phone: string | null; contact_email: string | null }> = {};
 
     if (tenantIds.length > 0) {
@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
         .from("tenants")
         .select("id, name, origin_phone, contact_email")
         .in("id", tenantIds);
-      for (const t of tenants || []) tenantById[t.id] = t;
+      for (const t of (tenants || []) as { id: string; name: string; origin_phone: string | null; contact_email: string | null }[]) {
+        tenantById[t.id] = t;
+      }
     }
 
     // Batch-fetch CRM contact phones for all tenant_ids in this page
@@ -56,7 +58,13 @@ export async function GET(request: NextRequest) {
         .in("tenant_id", tenantIds)
         .is("deleted_at", null);
 
-      const contactoIds = [...new Set((clientes || []).map((c) => c.contacto_id).filter(Boolean))];
+      const contactoIds = [
+        ...new Set(
+          ((clientes || []) as { tenant_id: string; contacto_id: string | null }[])
+            .map((c) => c.contacto_id)
+            .filter(Boolean)
+        ),
+      ];
 
       if (contactoIds.length > 0) {
         const { data: contactos } = await supabaseAdmin
@@ -64,8 +72,10 @@ export async function GET(request: NextRequest) {
           .select("id, telefono")
           .in("id", contactoIds);
 
-        const phoneByContactoId = Object.fromEntries((contactos || []).map((c) => [c.id, c.telefono]));
-        for (const c of clientes || []) {
+        const phoneByContactoId = Object.fromEntries(
+          ((contactos || []) as { id: string; telefono: string | null }[]).map((c) => [c.id, c.telefono])
+        );
+        for (const c of (clientes || []) as { tenant_id: string; contacto_id: string | null }[]) {
           if (c.tenant_id && c.contacto_id) {
             phoneByTenantId[c.tenant_id] = phoneByContactoId[c.contacto_id] ?? null;
           }
@@ -73,7 +83,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const enriched = (data || []).map((ticket) => ({
+    const enriched = ((data || []) as { tenant_id: string; [key: string]: unknown }[]).map((ticket) => ({
       ...ticket,
       tenant: tenantById[ticket.tenant_id] ?? null,
       crm_phone: phoneByTenantId[ticket.tenant_id] ?? null,
