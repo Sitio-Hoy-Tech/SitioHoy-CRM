@@ -44,12 +44,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cliente no encontrado en el CRM" }, { status: 404, headers });
     }
 
-    // Buscar sesión abierta existente o crear nueva
+    // Buscar sesión activa existente (open o pending)
     const { data: existing } = await supabaseAdmin
       .from("chat_sessions")
       .select("id, status")
       .eq("cliente_id", cliente.id)
-      .eq("status", "open")
+      .in("status", ["open", "pending"])
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(1)
       .maybeSingle();
 
     let sessionId: string;
@@ -57,20 +59,38 @@ export async function POST(request: NextRequest) {
     if (existing) {
       sessionId = existing.id;
     } else {
-      const { data: newSession, error: createError } = await supabaseAdmin
+      // Reabrir la primera sesión cerrada del cliente en lugar de crear una nueva
+      const { data: closedSession } = await supabaseAdmin
         .from("chat_sessions")
-        .insert({
-          cliente_id: cliente.id,
-          tenant_id: tenantId,
-          status: "open",
-        })
         .select("id")
-        .single();
+        .eq("cliente_id", cliente.id)
+        .eq("status", "closed")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      if (createError || !newSession) {
-        return NextResponse.json({ error: "Error al crear sesión" }, { status: 500, headers });
+      if (closedSession) {
+        await supabaseAdmin
+          .from("chat_sessions")
+          .update({ status: "open", updated_at: new Date().toISOString() })
+          .eq("id", closedSession.id);
+        sessionId = closedSession.id;
+      } else {
+        const { data: newSession, error: createError } = await supabaseAdmin
+          .from("chat_sessions")
+          .insert({
+            cliente_id: cliente.id,
+            tenant_id: tenantId,
+            status: "open",
+          })
+          .select("id")
+          .single();
+
+        if (createError || !newSession) {
+          return NextResponse.json({ error: "Error al crear sesión" }, { status: 500, headers });
+        }
+        sessionId = newSession.id;
       }
-      sessionId = newSession.id;
     }
 
     // Actualizar tenant_id en sesiones existentes que lo tengan vacío
@@ -88,9 +108,16 @@ export async function POST(request: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(50);
 
+    const { data: sessionData } = await supabaseAdmin
+      .from("chat_sessions")
+      .select("status")
+      .eq("id", sessionId)
+      .single();
+
     return NextResponse.json(
       {
         session_id: sessionId,
+        status: sessionData?.status ?? "open",
         cliente_nombre: cliente.nombre_empresa,
         messages: (messages ?? []).reverse(),
       },

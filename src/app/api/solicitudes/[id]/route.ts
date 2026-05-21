@@ -100,7 +100,7 @@ export async function PATCH(
       registro_id: id,
       accion: "UPDATE",
       cambios_anteriores: anterior ? { status: anterior.status } : null,
-      cambios_nuevos: { status },
+      cambios_nuevos: { status, name: anterior?.name ?? null, email: anterior?.email ?? null },
     });
 
     return NextResponse.json({ data });

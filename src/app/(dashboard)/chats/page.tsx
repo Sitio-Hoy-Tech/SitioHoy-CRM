@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Button from "@/components/common/Button";
-import { useOnNewChatMessage, dispatchChatUnreadReset, type ChatMessageEvent } from "@/stores/chatStore";
+import { useOnNewChatMessage, useOnSupportRequest, dispatchChatUnreadReset, dispatchSupportResolved, setActiveChatSession, type ChatMessageEvent } from "@/stores/chatStore";
 
 type Cliente = { id: string; nombre_empresa: string };
 
@@ -15,6 +16,7 @@ type Session = {
   last_message_at: string | null;
   last_message_preview: string | null;
   unread_agent_count: number;
+  pending_since: string | null;
   cliente: Cliente | null;
 };
 
@@ -42,6 +44,17 @@ function formatMsgTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function ElapsedTimer({ since, nowMs }: { since: string; nowMs: number }) {
+  const totalSecs = Math.floor((nowMs - new Date(since).getTime()) / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+
+  if (hours > 0) return <span>{hours}h {mins}m esperando</span>;
+  if (mins > 0) return <span>{mins}m {secs}s esperando</span>;
+  return <span>{Math.max(0, secs)}s esperando</span>;
+}
+
 function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
   const letter = name.charAt(0).toUpperCase();
   const cls = size === "sm"
@@ -57,6 +70,7 @@ function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
 function ChatPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: authSession } = useSession();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -71,12 +85,23 @@ function ChatPageInner() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [newClienteId, setNewClienteId] = useState("");
   const [creating, setCreating] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const hasPending = sessions.some(s => s.status === "pending" && s.pending_since);
+    if (!hasPending) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sessions]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeIdRef = useRef<string | null>(null);
   activeIdRef.current = activeId;
+  const sessionsRef = useRef<Session[]>([]);
+  sessionsRef.current = sessions;
 
   // Load sessions
   const loadSessions = useCallback(async () => {
@@ -86,6 +111,11 @@ function ChatPageInner() {
   }, []);
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
+
+  useEffect(() => {
+    setActiveChatSession(activeId);
+    return () => setActiveChatSession(null);
+  }, [activeId]);
 
   // Activate session from URL query param
   useEffect(() => {
@@ -106,8 +136,16 @@ function ChatPageInner() {
         setHasMore(json.hasMore ?? false);
         setLoadingMsgs(false);
       });
-    dispatchChatUnreadReset();
-    // Clear unread on the active session locally
+
+    const sessionUnread = sessionsRef.current.find(s => s.id === activeId)?.unread_agent_count ?? 0;
+    if (sessionUnread > 0) {
+      dispatchChatUnreadReset(sessionUnread);
+      fetch(`/api/chats/${activeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markRead: true }),
+      }).catch(() => {});
+    }
     setSessions(prev => prev.map(s => s.id === activeId ? { ...s, unread_agent_count: 0 } : s));
   }, [activeId]);
 
@@ -117,6 +155,11 @@ function ChatPageInner() {
       bottomRef.current?.scrollIntoView({ behavior: "instant" });
     }
   }, [loadingMsgs, messages.length]);
+
+  // Real-time: update session status when client requests support
+  useOnSupportRequest(useCallback(({ session_id, pending_since }) => {
+    setSessions(prev => prev.map(s => s.id === session_id ? { ...s, status: "pending", pending_since } : s));
+  }, []));
 
   // Real-time: listen to new messages via ChatNotifier events
   useOnNewChatMessage(useCallback((msg: ChatMessageEvent) => {
@@ -133,8 +176,8 @@ function ChatPageInner() {
       };
     }));
 
-    // Add client message to active chat
-    if (msg.sender_type === "client" && msg.session_id === activeIdRef.current) {
+    // Add incoming message to active chat (client or another agent)
+    if (msg.session_id === activeIdRef.current) {
       setMessages(prev => {
         if (prev.some(m => m.id === msg.id)) return prev;
         return [...prev, msg as Message];
@@ -174,7 +217,7 @@ function ChatPageInner() {
       id: tempId,
       session_id: activeId,
       sender_type: "agent",
-      sender_name: "Yo",
+      sender_name: authSession?.user?.name ?? "Agente",
       content,
       created_at: new Date().toISOString(),
       _optimistic: true,
@@ -211,12 +254,14 @@ function ChatPageInner() {
 
   async function closeSession() {
     if (!activeId) return;
+    const wasPending = sessionsRef.current.find(s => s.id === activeId)?.status === "pending";
     await fetch(`/api/chats/${activeId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "closed" }),
     });
-    setSessions(prev => prev.map(s => s.id === activeId ? { ...s, status: "closed" } : s));
+    if (wasPending) dispatchSupportResolved();
+    setSessions(prev => prev.map(s => s.id === activeId ? { ...s, status: "closed", pending_since: null } : s));
   }
 
   async function reopenSession() {
@@ -227,6 +272,21 @@ function ChatPageInner() {
       body: JSON.stringify({ status: "open" }),
     });
     setSessions(prev => prev.map(s => s.id === activeId ? { ...s, status: "open" } : s));
+  }
+
+  async function acceptSession() {
+    if (!activeId || accepting) return;
+    setAccepting(true);
+    const res = await fetch(`/api/chats/${activeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "open" }),
+    });
+    setAccepting(false);
+    if (res.ok) {
+      dispatchSupportResolved();
+      setSessions(prev => prev.map(s => s.id === activeId ? { ...s, status: "open", pending_since: null } : s));
+    }
   }
 
   async function openNewChatPanel() {
@@ -331,16 +391,32 @@ function ChatPageInner() {
                   router.push(`/chats?session=${session.id}`, { scroll: false });
                 }}
                 className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b border-edge/50 ${
-                  isActive ? "bg-accent/10" : "hover:bg-elevated"
+                  isActive
+                    ? session.status === "pending" ? "bg-amber-500/10" : "bg-accent/10"
+                    : session.status === "pending" ? "hover:bg-amber-500/5 bg-amber-500/5" : "hover:bg-elevated"
                 }`}
               >
-                <Avatar name={name} />
+                <div className="relative flex-shrink-0">
+                  <Avatar name={name} />
+                  {session.status === "pending" && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-card animate-pulse" />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm font-semibold truncate ${isActive ? "text-accent" : "text-heading"}`}>
+                    <span className={`text-sm font-semibold truncate ${
+                      isActive
+                        ? session.status === "pending" ? "text-amber-500" : "text-accent"
+                        : "text-heading"
+                    }`}>
                       {name}
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {session.status === "pending" && (
+                        <span className="text-[10px] font-semibold text-amber-500 border border-amber-500/40 bg-amber-500/10 rounded px-1.5 py-0.5">
+                          Soporte
+                        </span>
+                      )}
                       {session.status === "closed" && (
                         <span className="text-[10px] text-muted border border-edge rounded px-1">Cerrado</span>
                       )}
@@ -350,8 +426,12 @@ function ChatPageInner() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-xs text-muted truncate flex-1">
-                      {session.last_message_preview ?? "Sin mensajes aún"}
+                    <p className="text-xs truncate flex-1" style={{ color: session.status === "pending" ? "#FE920A" : undefined }}>
+                      {session.status === "pending" && session.pending_since
+                        ? <ElapsedTimer since={session.pending_since} nowMs={nowMs} />
+                        : session.status === "pending"
+                          ? "Solicita soporte"
+                          : <span className="text-muted">{session.last_message_preview ?? "Sin mensajes aún"}</span>}
                     </p>
                     {session.unread_agent_count > 0 && (
                       <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">
@@ -393,6 +473,11 @@ function ChatPageInner() {
                       <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
                       Conversación activa
                     </span>
+                  ) : activeSession?.status === "pending" ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse" />
+                      <span className="text-amber-500">Solicitud de soporte pendiente</span>
+                    </span>
                   ) : (
                     <span className="text-muted">Conversación cerrada</span>
                   )}
@@ -400,7 +485,19 @@ function ChatPageInner() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {activeSession?.status === "open" ? (
+              {activeSession?.status === "pending" ? (
+                <>
+                  <Button size="sm" onClick={acceptSession} loading={accepting} className="bg-amber-500 hover:bg-amber-600 border-amber-500 hover:border-amber-600">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Aceptar chat
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={closeSession}>
+                    Rechazar
+                  </Button>
+                </>
+              ) : activeSession?.status === "open" ? (
                 <Button size="sm" variant="secondary" onClick={closeSession}>
                   Cerrar conversación
                 </Button>
@@ -494,6 +591,16 @@ function ChatPageInner() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 Conversación cerrada · <button type="button" onClick={reopenSession} className="text-accent hover:underline">Reabrir</button>
+              </div>
+            ) : activeSession?.status === "pending" ? (
+              <div className="flex items-center justify-center py-2 text-sm gap-2">
+                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="text-amber-500 font-medium">Aceptá el chat para responder</span>
+                <button type="button" onClick={acceptSession} className="text-accent hover:underline">
+                  Aceptar ahora
+                </button>
               </div>
             ) : (
               <div className="flex items-end gap-3">

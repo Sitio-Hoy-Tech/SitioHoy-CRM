@@ -80,7 +80,7 @@ export default async function DashboardPage() {
     supabaseAdmin.from("clientes").select("id", { count: "exact" }).is("deleted_at", null),
     supabaseAdmin.from("contactos").select("id", { count: "exact" }).is("deleted_at", null).gt("created_at", sevenDaysAgo.toISOString()),
     supabaseAdmin.from("clientes").select("id, nombre_empresa, fecha_vencimiento").is("deleted_at", null).lte("fecha_vencimiento", sevenDaysFromNow.toISOString()).order("fecha_vencimiento", { ascending: true }),
-    supabaseAdmin.from("audit_log").select(`*, usuario:usuarios(id, nombre, apellido)`).in("tabla_afectada", ["contactos", "clientes", "seguimiento_contactos", "contact_messages", "caja_gastos"]).order("created_at", { ascending: false }).limit(5),
+    supabaseAdmin.from("audit_log").select(`*, usuario:usuarios(id, nombre, apellido)`).in("tabla_afectada", ["contactos", "clientes", "seguimiento_contactos", "contact_messages", "tickets", "caja_gastos"]).order("created_at", { ascending: false }).limit(5),
     supabaseAdmin.from("etiquetas_negocio").select("id, nombre").is("deleted_at", null),
     supabaseAdmin.from("contactos").select("etiqueta_negocio_id").is("deleted_at", null)
   ]);
@@ -264,6 +264,18 @@ export default async function DashboardPage() {
                         new:      "marcó un ticket como nuevo",
                       };
                       actionText = statusActions[newStatus] || "actualizó un ticket";
+                      targetLink = `/solicitudes/${log.registro_id}`;
+                      iconType = "ticket";
+                    } else if (log.tabla_afectada === "tickets") {
+                      const newStatus = log.cambios_nuevos?.status;
+                      const statusActions: Record<string, string> = {
+                        archived: "solucionó un ticket",
+                        reopened: "reabrió un ticket",
+                        read:     "puso un ticket en revisión",
+                        new:      "marcó un ticket como nuevo",
+                      };
+                      actionText = statusActions[newStatus] || "actualizó un ticket";
+                      targetName = log.cambios_nuevos?.name || log.cambios_nuevos?.email || "";
                       targetLink = `/solicitudes/${log.registro_id}`;
                       iconType = "ticket";
                     } else if (log.tabla_afectada === "caja_gastos") {

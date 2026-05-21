@@ -13,6 +13,7 @@ const TABLAS = [
   { value: "estados_contacto", label: "Estados contacto" },
   { value: "etiquetas_negocio", label: "Etiquetas negocio" },
   { value: "seguimiento_contactos", label: "Seguimiento" },
+  { value: "tickets", label: "Tickets" },
   { value: "usuarios", label: "Usuarios" },
   { value: "caja_gastos", label: "Gastos / Caja" },
 ];

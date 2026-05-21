@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useNewTicketCount, dispatchTicketsReset } from "@/stores/ticketStore";
-import { useUnreadChatCount, dispatchChatUnreadReset } from "@/stores/chatStore";
+import { useChatBadges } from "@/stores/chatStore";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm11 0h7v7h-7v-7z" },
@@ -33,7 +33,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const newTicketCount = useNewTicketCount();
-  const unreadChatCount = useUnreadChatCount();
+  const { unread: unreadChatCount, pending: pendingSupportCount } = useChatBadges();
 
   return (
     <aside className="w-60 glass border-r border-edge min-h-screen flex flex-col sticky top-0 h-screen z-50">
@@ -68,7 +68,6 @@ export default function Sidebar() {
                 href={item.href}
                 onClick={() => {
                 if (item.href === "/solicitudes") dispatchTicketsReset();
-                if (item.href === "/chats") dispatchChatUnreadReset();
               }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${isActive || isCatalogActive
                   ? "bg-accent/10 text-accent"
@@ -97,9 +96,21 @@ export default function Sidebar() {
                     {newTicketCount > 99 ? "99+" : newTicketCount}
                   </span>
                 )}
-                {item.href === "/chats" && unreadChatCount > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center">
-                    {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                {item.href === "/chats" && (unreadChatCount > 0 || pendingSupportCount > 0) && (
+                  <span className="ml-auto flex items-center gap-1">
+                    {pendingSupportCount > 0 && (
+                      <span
+                        className="min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-black flex items-center justify-center"
+                        style={{ backgroundColor: "#FE920A" }}
+                      >
+                        {pendingSupportCount > 99 ? "99+" : pendingSupportCount}
+                      </span>
+                    )}
+                    {unreadChatCount > 0 && (
+                      <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center">
+                        {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                      </span>
+                    )}
                   </span>
                 )}
               </Link>

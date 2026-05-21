@@ -6,15 +6,26 @@ export async function GET() {
   try {
     await getSessionUser();
 
-    const { data, error } = await supabaseAdmin
-      .from("chat_sessions")
-      .select("unread_agent_count")
-      .gt("unread_agent_count", 0);
+    const [unreadRes, pendingRes] = await Promise.all([
+      supabaseAdmin
+        .from("chat_sessions")
+        .select("unread_agent_count")
+        .gt("unread_agent_count", 0),
+      supabaseAdmin
+        .from("chat_sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+    ]);
 
-    if (error) return NextResponse.json({ count: 0 });
+    if (unreadRes.error) return NextResponse.json({ count: 0, pending_count: 0 });
 
-    const total = data?.reduce((sum: number, s: { unread_agent_count: number }) => sum + (s.unread_agent_count ?? 0), 0) ?? 0;
-    return NextResponse.json({ count: total });
+    const total = unreadRes.data?.reduce(
+      (sum: number, s: { unread_agent_count: number }) => sum + (s.unread_agent_count ?? 0),
+      0
+    ) ?? 0;
+    const pending_count = pendingRes.count ?? 0;
+
+    return NextResponse.json({ count: total, pending_count });
   } catch {
     return NextResponse.json({ count: 0 });
   }
