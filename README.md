@@ -39,6 +39,7 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 - Sistema de tickets en tiempo real con notificaciones del sistema operativo
 - Sección de Caja con MRR automático, gastos manuales e historial mensual
 - Envío de email personalizado para recuperación de contraseña via Resend
+- Integración MercadoPago: cuentas multi-cuenta, suscripciones recurrentes y webhooks por cuenta
 
 ---
 
@@ -109,7 +110,8 @@ src/
 │   │   │   ├── planes/page.tsx
 │   │   │   ├── estados-contacto/page.tsx
 │   │   │   ├── etiquetas-negocio/page.tsx
-│   │   │   └── etiquetas-plantillas/page.tsx
+│   │   │   ├── etiquetas-plantillas/page.tsx
+│   │   │   └── mp-cuentas/page.tsx       # Cuentas MercadoPago (CRUD)
 │   │   ├── solicitudes/
 │   │   │   ├── page.tsx              # Lista de tickets con filtros y estados
 │   │   │   └── [id]/page.tsx         # Detalle completo del ticket
@@ -134,7 +136,11 @@ src/
 │   │   │   └── [id]/
 │   │   │       ├── route.ts                    # GET / PUT / DELETE (soft)
 │   │   │       ├── restore/route.ts            # POST — restaurar archivado
-│   │   │       └── delete-permanent/route.ts   # POST — borrado total con purga SitioHoy
+│   │   │       ├── delete-permanent/route.ts   # POST — borrado total con purga SitioHoy
+│   │   │       └── mp-subscription/route.ts    # POST — crear/regenerar suscripción MP
+│   │   ├── mp-cuentas/
+│   │   │   ├── route.ts                        # GET / POST cuentas MP
+│   │   │   └── [id]/route.ts                   # PUT / DELETE cuenta MP
 │   │   ├── catalogos/
 │   │   │   ├── estados-contacto/route.ts + [id]/route.ts
 │   │   │   ├── etiquetas-negocio/route.ts + [id]/route.ts
@@ -149,7 +155,10 @@ src/
 │   │   │       ├── route.ts          # GET / PATCH estado
 │   │   │       └── reset-password/route.ts  # POST — envía email de recuperación via Resend
 │   │   ├── webhooks/
-│   │   │   └── ticket/route.ts       # POST — recibe nuevos tickets desde SitioHoy
+│   │   │   ├── ticket/route.ts                         # POST — recibe tickets desde SitioHoy
+│   │   │   └── mercadopago/
+│   │   │       ├── route.ts                            # POST — webhook genérico MP (fallback)
+│   │   │       └── [cuenta_id]/route.ts                # POST — webhook por cuenta (con secret)
 │   │   ├── caja/
 │   │   │   ├── resumen/route.ts      # GET resumen mensual (MRR + gastos + tendencia)
 │   │   │   └── gastos/
@@ -180,7 +189,8 @@ src/
 │   │   ├── CurrencyInput.tsx
 │   │   ├── Modal.tsx
 │   │   ├── Toast.tsx
-│   │   └── FiltersBar.tsx
+│   │   ├── FiltersBar.tsx
+│   │   └── MpCuentaSelect.tsx    # Selector de cuenta MP (dropdown custom compartido)
 │   ├── dashboard/
 │   │   └── DashboardRealtimeManager.tsx
 │   └── CatalogoCRUD.tsx
@@ -190,6 +200,7 @@ src/
 │   ├── auth.ts
 │   ├── supabase.ts               # supabaseAdmin (service role) + supabase (anon, client-side)
 │   ├── supabase-sitiohoy.ts      # Cliente service role para DB de SitioHoy
+│   ├── mercadopago.ts            # createSubscription, getSubscription, cancelSubscription, verifyWebhookSignature
 │   └── mrr.ts                    # tomarSnapshotMRR() — upsert snapshot mensual
 ├── types/
 │   └── index.ts
@@ -247,10 +258,28 @@ El CRM usa dos bases de datos Supabase separadas:
 | etiqueta_negocio_id | UUID FK | → etiquetas_negocio |
 | tenant_id | VARCHAR UNIQUE | ID multi-tenant plataforma SitioHoy |
 | fecha_pago | DATE | Última fecha de pago |
-| fecha_vencimiento | DATE | Auto: fecha_pago + 30 días (trigger) |
+| fecha_vencimiento | DATE | Auto: fecha_pago + 30 días (trigger, solo al cambiar fecha_pago) |
+| mp_cuenta_id | UUID FK | → mp_cuentas (cuenta MP asignada) |
+| mp_subscription_id | VARCHAR | ID de preapproval en MercadoPago |
+| mp_init_point | TEXT | URL de pago generada por MP |
+| mp_status | VARCHAR | Estado de la suscripción MP (`pending` / `authorized` / `cancelled` / `paused`) |
 | estado | ENUM | `active` / `inactive` |
 | created_by | UUID FK | → usuarios |
 | deleted_at | TIMESTAMPTZ | Soft delete |
+
+#### `mp_cuentas`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| nombre | VARCHAR | Nombre descriptivo de la cuenta |
+| descripcion | TEXT | Notas opcionales |
+| email_titular | VARCHAR | Email del titular de la cuenta MP |
+| access_token | TEXT | Access Token de producción de MP |
+| public_key | TEXT | Public Key de producción de MP |
+| webhook_secret | TEXT | Secret que MP provee al configurar el webhook |
+| activo | BOOLEAN | Si la cuenta está disponible para asignar |
+| created_at | TIMESTAMPTZ | — |
+| updated_at | TIMESTAMPTZ | —
 
 #### `tickets`
 | Columna | Tipo | Descripción |
@@ -318,7 +347,7 @@ El CRM usa dos bases de datos Supabase separadas:
 
 ### Triggers
 
-- `trg_clientes_vencimiento` — dispara `calcular_fecha_vencimiento()` en INSERT/UPDATE de `fecha_pago` en `clientes`, asigna `fecha_vencimiento = fecha_pago + INTERVAL '30 days'`
+- `trg_clientes_vencimiento` — dispara `calcular_fecha_vencimiento()` en INSERT y en UPDATE **solo cuando `fecha_pago` cambia**. Asigna `fecha_vencimiento = fecha_pago + INTERVAL '30 days'`. No interviene cuando el webhook de MP actualiza `fecha_vencimiento` directamente.
 - `set_updated_at` — actualiza `updated_at` automáticamente en `caja_gastos`
 
 ### Cron jobs (pg_cron — Supabase CRM)
@@ -411,6 +440,7 @@ Todas las rutas retornan JSON. Los errores siguen el formato `{ error: string }`
 | DELETE | `/api/clientes/[id]` | Soft delete (archiva) |
 | POST | `/api/clientes/[id]/restore` | Restaurar cliente archivado |
 | POST | `/api/clientes/[id]/delete-permanent` | Borrado permanente + purga SitioHoy |
+| POST | `/api/clientes/[id]/mp-subscription` | Crear o regenerar suscripción MP para el cliente |
 
 **Parámetros de GET /api/clientes:**
 - `archived=true` — devuelve solo clientes con `deleted_at IS NOT NULL` (archivados)
@@ -447,6 +477,24 @@ Elimina permanentemente el registro del CRM y purga todos los datos del tenant e
 - `search` — búsqueda en nombre, email o mensaje
 - `date_from`, `date_to` — rango de fechas
 - `page`, `limit` — paginación (default: 20/página)
+
+### Cuentas MercadoPago
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/mp-cuentas` | Lista todas las cuentas MP |
+| POST | `/api/mp-cuentas` | Crear cuenta MP |
+| PUT | `/api/mp-cuentas/[id]` | Actualizar cuenta MP |
+| DELETE | `/api/mp-cuentas/[id]` | Eliminar cuenta MP |
+
+### Webhooks MercadoPago
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/webhooks/mercadopago` | Webhook genérico (busca el access token por `mp_subscription_id`) |
+| POST | `/api/webhooks/mercadopago/[cuenta_id]` | Webhook por cuenta — valida firma con el `webhook_secret` específico de la cuenta |
+
+Ambos endpoints están excluidos del middleware de NextAuth. Los tópicos esperados son `preapproval` y `payment`. Al recibir un pago autorizado extienden `fecha_vencimiento` del cliente sumando un mes.
 
 ### Webhook de tickets
 
@@ -656,6 +704,16 @@ Mismas que en desarrollo, con estos cambios:
 - Estados de contacto: configurables (ej: "Interesado", "En negociación", "Cliente")
 - Etiquetas de negocio: sectores (ej: "Gimnasio", "Restaurante")
 - Etiquetas de plantillas: categorías de templates
+- **Cuentas MercadoPago**: gestión de cuentas MP con credenciales de producción, webhook secret y URL de webhook por cuenta
+
+### MercadoPago — Suscripciones
+
+- Catálogo de cuentas MP (`Catálogos → Cuentas MP`): alta, edición y baja de cuentas con Access Token, Public Key y Webhook Secret. Cada cuenta muestra su URL de webhook lista para copiar y configurar en el panel de developers de MP.
+- Asignación de cuenta MP a cada cliente desde el formulario de creación y desde el detalle.
+- Generación del link de pago (`mp_init_point`) desde el detalle del cliente: el sistema crea una suscripción recurrente mensual en MP usando el access token de la cuenta asignada y el precio del plan del cliente.
+- Botón "Copiar link de pago" destacado en el detalle del cliente para compartir el link al cliente.
+- Renovación automática de `fecha_vencimiento`: al recibir el webhook de MP con un pago aprobado o la suscripción autorizada, el CRM extiende la fecha de vencimiento del cliente en un mes.
+- Webhooks por cuenta con validación de firma HMAC-SHA256 usando el `webhook_secret` específico de cada cuenta.
 
 ### Tickets (Solicitudes)
 
@@ -754,6 +812,21 @@ Cuando un admin hace clic en "Enviar link de recuperación" en un ticket de tipo
 3. El email incluye el botón "Crear nueva contraseña" con el link y un fallback de texto
 
 El template usa layout 100% basado en tablas con estilos inline para compatibilidad con todos los clientes de email (Gmail, Outlook, Apple Mail, mobile).
+
+### MercadoPago — Suscripciones recurrentes
+
+El módulo de MercadoPago (`src/lib/mercadopago.ts`) expone:
+- `createSubscription()` — crea un preapproval mensual en MP con el email del contacto, el monto del plan y la `back_url`
+- `getSubscription()` — consulta el estado de un preapproval
+- `cancelSubscription()` — cancela un preapproval
+- `verifyWebhookSignature()` — valida la firma HMAC-SHA256 de las notificaciones de MP
+
+**Flujo completo:**
+1. Desde el detalle del cliente, se asigna una cuenta MP y se hace clic en "Crear suscripción"
+2. El CRM llama a MP con el access token de la cuenta y genera el `init_point`
+3. El link se copia y se envía al cliente (WhatsApp u otro canal)
+4. El cliente paga → MP notifica al webhook `POST /api/webhooks/mercadopago/[cuenta_id]`
+5. El CRM verifica la firma, consulta el estado del preapproval y extiende `fecha_vencimiento` + 1 mes
 
 ### Umami Analytics
 

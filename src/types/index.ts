@@ -15,6 +15,19 @@ export interface Usuario {
   deleted_at: string | null;
 }
 
+export interface MpCuenta {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  access_token: string;
+  public_key: string | null;
+  webhook_secret: string | null;
+  email_titular: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Plan {
   id: string;
   nombre: string;
@@ -75,10 +88,16 @@ export interface Cliente {
   updated_at: string;
   deleted_at: string | null;
   created_by: string | null;
+  mp_subscription_id: string | null;
+  mp_plan_id: string | null;
+  mp_init_point: string | null;
+  mp_status: string | null;
+  mp_cuenta_id: string | null;
   // Relaciones expandidas
   contacto?: Contacto;
   plan?: Plan;
   etiqueta_negocio?: EtiquetaNegocio;
+  mp_cuenta?: MpCuenta;
 }
 
 export interface SeguimientoContacto {

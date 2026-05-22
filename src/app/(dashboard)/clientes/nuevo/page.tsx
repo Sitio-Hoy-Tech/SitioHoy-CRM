@@ -8,7 +8,8 @@ import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
 import CurrencyInput from "@/components/common/CurrencyInput";
-import type { Contacto, Plan, EtiquetaNegocio } from "@/types";
+import type { Contacto, Plan, EtiquetaNegocio, MpCuenta } from "@/types";
+import MpCuentaSelect from "@/components/common/MpCuentaSelect";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function NuevoClientePage() {
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [etiquetas, setEtiquetas] = useState<EtiquetaNegocio[]>([]);
+  const [mpCuentas, setMpCuentas] = useState<MpCuenta[]>([]);
 
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [creatingEtiqueta, setCreatingEtiqueta] = useState(false);
@@ -29,6 +31,7 @@ export default function NuevoClientePage() {
     plan_id: "",
     etiqueta_negocio_id: "",
     fecha_pago: new Date().toISOString().split("T")[0],
+    mp_cuenta_id: "" as string | null,
     email: "",
     password: "",
   });
@@ -39,10 +42,12 @@ export default function NuevoClientePage() {
       fetch("/api/contactos?limit=500").then(r => r.json()),
       fetch("/api/catalogos/planes").then(r => r.json()),
       fetch("/api/catalogos/etiquetas-negocio").then(r => r.json()),
-    ]).then(([contactosRes, planesRes, etiquetasRes]) => {
+      fetch("/api/mp-cuentas").then(r => r.json()),
+    ]).then(([contactosRes, planesRes, etiquetasRes, mpRes]) => {
       setContactos(contactosRes.data || []);
       setPlanes(planesRes.data || []);
       setEtiquetas(etiquetasRes.data || []);
+      setMpCuentas((mpRes.data || []).filter((c: MpCuenta) => c.activo));
     });
   }, []);
 
@@ -94,7 +99,7 @@ export default function NuevoClientePage() {
     const res = await fetch("/api/clientes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, mp_cuenta_id: form.mp_cuenta_id || null }),
     });
 
     const json = await res.json();
@@ -177,6 +182,19 @@ export default function NuevoClientePage() {
             <p className="text-sm text-heading">
               Plan {selectedPlan.nombre}: <span className="font-bold text-accent">${Number(selectedPlan.precio).toLocaleString("es-AR")}/mes</span>
             </p>
+          </div>
+        )}
+
+        {mpCuentas.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-body mb-1.5">
+              Cuenta MercadoPago
+            </label>
+            <MpCuentaSelect
+              value={form.mp_cuenta_id}
+              onChange={id => setForm(p => ({ ...p, mp_cuenta_id: id }))}
+              cuentas={mpCuentas}
+            />
           </div>
         )}
 

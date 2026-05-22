@@ -30,7 +30,8 @@ export async function GET(
         ),
         plan:planes(id, nombre, beneficios, precio),
         etiqueta_negocio:etiquetas_negocio(id, nombre),
-        usuario_creador:usuarios!clientes_created_by_fkey(id, nombre, apellido)`
+        usuario_creador:usuarios!clientes_created_by_fkey(id, nombre, apellido),
+        mp_cuenta:mp_cuentas(id, nombre, descripcion, activo)`
       )
       .eq("id", id)
       .is("deleted_at", null)

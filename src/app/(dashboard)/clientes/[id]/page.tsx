@@ -9,7 +9,8 @@ import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
-import type { Cliente, Contacto, Plan, EtiquetaNegocio } from "@/types";
+import type { Cliente, Contacto, Plan, EtiquetaNegocio, MpCuenta } from "@/types";
+import MpCuentaSelect from "@/components/common/MpCuentaSelect";
 
 function CopyButton({ value, field, copied, onCopy }: {
   value: string;
@@ -87,6 +88,7 @@ function shFormFromData(d: Record<string, any>): SHForm {
   };
 }
 
+
 export default function ClienteDetallePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -126,6 +128,47 @@ export default function ClienteDetallePage() {
   const [editUserForm, setEditUserForm] = useState({ email: "", password: "" });
   const [editUserSaving, setEditUserSaving] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  // MercadoPago
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpCuentas, setMpCuentas] = useState<MpCuenta[]>([]);
+  const [mpCuentaSaving, setMpCuentaSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/mp-cuentas").then(r => r.json()).then(j => setMpCuentas(j.data || []));
+  }, []);
+
+  async function handleAsignarCuenta(mp_cuenta_id: string | null) {
+    setMpCuentaSaving(true);
+    const res = await fetch(`/api/clientes/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, mp_cuenta_id: mp_cuenta_id || null }),
+    });
+    const json = await res.json();
+    setMpCuentaSaving(false);
+    if (!res.ok) {
+      setToast({ message: json.error || "Error al asignar cuenta", type: "error" });
+      return;
+    }
+    const refreshed = await fetch(`/api/clientes/${id}`).then(r => r.json());
+    setCliente(refreshed.data);
+    setToast({ message: "Cuenta MP actualizada", type: "success" });
+  }
+
+  async function handleCreateMpSubscription() {
+    setMpLoading(true);
+    const res = await fetch(`/api/clientes/${id}/mp-subscription`, { method: "POST" });
+    const json = await res.json();
+    setMpLoading(false);
+    if (!res.ok) {
+      setToast({ message: json.error || "Error al crear suscripción", type: "error" });
+      return;
+    }
+    const refreshed = await fetch(`/api/clientes/${id}`).then(r => r.json());
+    setCliente(refreshed.data);
+    setToast({ message: "Suscripción creada. Copiá el link y enviáselo al cliente.", type: "success" });
+  }
 
   // Borrado
   const [showSoftDelete, setShowSoftDelete] = useState(false);
@@ -766,6 +809,102 @@ export default function ClienteDetallePage() {
                 )
               ) : null
             )}
+
+            {/* ── MercadoPago subscription card ── */}
+            {(() => {
+              const mpStatus = cliente.mp_status;
+              const isAuthorized = mpStatus === "authorized";
+              const isPending = mpStatus === "pending";
+              const isCancelled = mpStatus === "cancelled" || mpStatus === "paused";
+              const statusLabel = isAuthorized ? "Activa" : isPending ? "Pendiente de aprobación" : isCancelled ? "Cancelada / Pausada" : null;
+              const statusColor = isAuthorized
+                ? "bg-accent-soft text-accent border-accent-border"
+                : isPending
+                ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
+                : "bg-red-500/15 text-red-400 border-red-500/20";
+
+              return (
+                <div className="bg-card rounded-xl border border-edge p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-heading">Suscripción MercadoPago</h2>
+                    {statusLabel && (
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}>
+                        {statusLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted mb-1.5">Cuenta MP asignada</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <MpCuentaSelect
+                          value={cliente.mp_cuenta_id}
+                          onChange={handleAsignarCuenta}
+                          cuentas={mpCuentas}
+                          disabled={mpCuentaSaving}
+                        />
+                      </div>
+                      {mpCuentaSaving && <span className="text-xs text-muted whitespace-nowrap">Guardando...</span>}
+                    </div>
+                  </div>
+
+                  {cliente.mp_init_point ? (
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(cliente.mp_init_point!, "mp-init-point")}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border-2 transition-all duration-200 ${
+                          copied === "mp-init-point"
+                            ? "bg-accent/15 border-accent text-accent"
+                            : "bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/60"
+                        }`}
+                      >
+                        {copied === "mp-init-point" ? (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Link copiado
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                            Copiar link de pago
+                          </>
+                        )}
+                      </button>
+                      <div className="bg-elevated rounded-lg border border-edge px-3 py-2">
+                        <p className="text-xs text-muted mb-0.5">Link de pago</p>
+                        <span className="text-xs font-mono text-body truncate block">{cliente.mp_init_point}</span>
+                      </div>
+                      {cliente.mp_subscription_id && (
+                        <div>
+                          <p className="text-xs text-muted mb-1">ID de suscripción</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-body truncate max-w-[360px]">{cliente.mp_subscription_id}</span>
+                            <CopyButton value={cliente.mp_subscription_id} field="mp-sub-id" copied={copied} onCopy={copyToClipboard} />
+                          </div>
+                        </div>
+                      )}
+                      <Button variant="secondary" size="sm" loading={mpLoading} onClick={handleCreateMpSubscription}>
+                        Regenerar link de pago
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted">No hay suscripción activa. Creá una para obtener el link de pago y enviárselo al cliente.</p>
+                      <Button loading={mpLoading} onClick={handleCreateMpSubscription}>
+                        Crear suscripción
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* ── RIGHT (1/3): stats, contacto, plan, usuarios, peligro ── */}

@@ -44,6 +44,7 @@ export const clienteSchema = z.object({
   etiqueta_negocio_id: z.string().uuid("Etiqueta de negocio requerida"),
   fecha_pago: z.string().min(1, "Fecha de pago requerida"),
   tenant_id: z.string().uuid("Tenant ID inválido").optional().or(z.literal("")).transform(v => v || null),
+  mp_cuenta_id: z.string().uuid().nullable().optional(),
 });
 
 // ============================================
