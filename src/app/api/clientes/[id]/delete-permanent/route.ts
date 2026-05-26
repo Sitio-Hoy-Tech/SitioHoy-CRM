@@ -68,6 +68,16 @@ async function purgarTenant(tenant_id: string): Promise<void> {
   const userIds = (userTenants ?? []).map((ut: { user_id: string }) => ut.user_id);
   await Promise.all(userIds.map((uid: string) => supabaseSitioHoy.auth.admin.deleteUser(uid)));
 
+  // — Archivos de Storage —
+  const { data: storageFiles } = await supabaseSitioHoy.storage
+    .from("objects")
+    .list(tenant_id);
+
+  if (storageFiles && storageFiles.length > 0) {
+    const paths = storageFiles.map((f: { name: string }) => `${tenant_id}/${f.name}`);
+    await supabaseSitioHoy.storage.from("objects").remove(paths);
+  }
+
   // — Tenant —
   await supabaseSitioHoy.from("tenants").delete().eq("id", tenant_id);
 }
