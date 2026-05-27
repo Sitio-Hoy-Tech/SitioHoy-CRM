@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import ReactSelect from "react-select";
 import CreatableSelect from "react-select/creatable";
 
@@ -116,6 +116,7 @@ export default function SearchableSelect({
   onCreateOption,
   isLoading = false,
 }: SearchableSelectProps) {
+  const id = useId();
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   useEffect(() => { setPortalTarget(document.body); }, []);
 
@@ -132,6 +133,7 @@ export default function SearchableSelect({
         </label>
       )}
       <Component
+        instanceId={id}
         options={options}
         value={selectedOption}
         onChange={(opt) => onChange((opt as Option)?.value || "")}

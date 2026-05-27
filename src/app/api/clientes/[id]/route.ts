@@ -6,6 +6,12 @@ import { registrarAuditoria } from "@/lib/audit";
 import { getSessionUser } from "@/lib/api";
 import { tomarSnapshotMRR } from "@/lib/mrr";
 
+function dominioToUrl(dominio: string | null | undefined): string | null {
+  if (!dominio) return null;
+  const clean = dominio.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return `https://${clean}`;
+}
+
 function maxProductsForPlan(planNombre: string): number | null {
   const n = planNombre.toLowerCase();
   if (n.includes("empresa")) return null;
@@ -102,21 +108,33 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Sincronizar plan y max_products en SitioHoy
-    if (anterior.tenant_id && parsed.data.plan_id) {
-      const { data: planData } = await supabaseAdmin
-        .from("planes")
-        .select("nombre")
-        .eq("id", parsed.data.plan_id)
-        .single();
+    // Sincronizar campos en SitioHoy
+    if (anterior.tenant_id) {
+      const shUpdate: Record<string, unknown> = {};
 
-      if (planData) {
+      // Plan y max_products
+      if (parsed.data.plan_id) {
+        const { data: planData } = await supabaseAdmin
+          .from("planes")
+          .select("nombre")
+          .eq("id", parsed.data.plan_id)
+          .single();
+
+        if (planData) {
+          shUpdate.plan = planData.nombre.toLowerCase();
+          shUpdate.max_products = maxProductsForPlan(planData.nombre);
+        }
+      }
+
+      // URL cuando cambia el dominio
+      if (parsed.data.dominio !== anterior.dominio) {
+        shUpdate.url = dominioToUrl(parsed.data.dominio);
+      }
+
+      if (Object.keys(shUpdate).length > 0) {
         const { error: shError } = await supabaseSitioHoy
           .from("tenants")
-          .update({
-            plan: planData.nombre.toLowerCase(),
-            max_products: maxProductsForPlan(planData.nombre),
-          })
+          .update(shUpdate)
           .eq("id", anterior.tenant_id);
 
         if (shError) {

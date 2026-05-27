@@ -43,7 +43,8 @@ type SHForm = {
   origin_address: string; origin_city: string; origin_postal_code: string;
   origin_state: string;
   correo_argentino_customer_id: string; mp_access_token: string;
-  mp_public_key: string; resend_api_key: string; envia_access_token: string;
+  mp_public_key: string; resend_api_key: string; resend_from_email: string;
+  resend_domain_verified: boolean; envia_access_token: string;
 };
 
 const SH_PLAN_OPTIONS = [
@@ -63,7 +64,8 @@ const EMPTY_SH_FORM: SHForm = {
   origin_name: "", origin_phone: "", origin_address: "", origin_city: "",
   origin_postal_code: "", origin_state: "",
   correo_argentino_customer_id: "", mp_access_token: "", mp_public_key: "",
-  resend_api_key: "", envia_access_token: "",
+  resend_api_key: "", resend_from_email: "", resend_domain_verified: false,
+  envia_access_token: "",
 };
 
 function shFormFromData(d: Record<string, any>): SHForm {
@@ -84,6 +86,8 @@ function shFormFromData(d: Record<string, any>): SHForm {
     mp_access_token: d.mp_access_token || "",
     mp_public_key: d.mp_public_key || "",
     resend_api_key: d.resend_api_key || "",
+    resend_from_email: d.resend_from_email || "",
+    resend_domain_verified: d.resend_domain_verified === true,
     envia_access_token: d.envia_access_token || "",
   };
 }
@@ -323,6 +327,7 @@ export default function ClienteDetallePage() {
       body: JSON.stringify({
         ...shForm,
         max_products: shForm.max_products !== "" ? Number(shForm.max_products) : null,
+        resend_domain: shForm.resend_from_email.includes("@") ? shForm.resend_from_email.split("@")[1] : null,
       }),
     });
     const json = await res.json();
@@ -604,11 +609,12 @@ export default function ClienteDetallePage() {
                         <Button type="submit" loading={shSaving}>Guardar</Button>
                       </div>
                     </div>
-                    <div className="space-y-4">
+
+                    <div className="space-y-3">
                       <p className="text-xs font-semibold text-muted uppercase tracking-wider">Origen de envíos</p>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Nombre de origen" value={shForm.origin_name} onChange={e => updateShField("origin_name", e.target.value)} />
-                        <Input label="Teléfono de origen" value={shForm.origin_phone} onChange={e => updateShField("origin_phone", e.target.value)} />
+                        <Input label="Nombre" value={shForm.origin_name} onChange={e => updateShField("origin_name", e.target.value)} />
+                        <Input label="Teléfono" value={shForm.origin_phone} onChange={e => updateShField("origin_phone", e.target.value)} />
                       </div>
                       <Input label="Dirección" value={shForm.origin_address} onChange={e => updateShField("origin_address", e.target.value)} />
                       <div className="grid grid-cols-3 gap-4">
@@ -617,16 +623,37 @@ export default function ClienteDetallePage() {
                         <Input label="Provincia" value={shForm.origin_state} onChange={e => updateShField("origin_state", e.target.value)} />
                       </div>
                     </div>
-                    <div className="space-y-4">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Correo Argentino</p>
-                      <Input label="Customer ID" value={shForm.correo_argentino_customer_id} onChange={e => updateShField("correo_argentino_customer_id", e.target.value)} />
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">MercadoPago</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Access Token" value={shForm.mp_access_token} onChange={e => updateShField("mp_access_token", e.target.value)} placeholder="APP_USR-..." />
+                        <Input label="Public Key" value={shForm.mp_public_key} onChange={e => updateShField("mp_public_key", e.target.value)} placeholder="APP_USR-..." />
+                      </div>
                     </div>
-                    <div className="space-y-4">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Credenciales</p>
-                      <Input label="MP Access Token" value={shForm.mp_access_token} onChange={e => updateShField("mp_access_token", e.target.value)} />
-                      <Input label="MP Public Key" value={shForm.mp_public_key} onChange={e => updateShField("mp_public_key", e.target.value)} />
-                      <Input label="Resend API Key" value={shForm.resend_api_key} onChange={e => updateShField("resend_api_key", e.target.value)} />
-                      <Input label="Envia Access Token" value={shForm.envia_access_token} onChange={e => updateShField("envia_access_token", e.target.value)} />
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Correo Argentino</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Customer ID" value={shForm.correo_argentino_customer_id} onChange={e => updateShField("correo_argentino_customer_id", e.target.value)} />
+                        <div />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Resend</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="API Key" value={shForm.resend_api_key} onChange={e => updateShField("resend_api_key", e.target.value)} placeholder="re_..." />
+                        <div />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Envia</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Access Token" value={shForm.envia_access_token} onChange={e => updateShField("envia_access_token", e.target.value)} />
+                        <div />
+                      </div>
                     </div>
                   </form>
                 ) : (
@@ -744,10 +771,12 @@ export default function ClienteDetallePage() {
                     {(shTenant.correo_argentino_customer_id || shTenant.correo_argentino_token) && (() => {
                       const tokenExpiry = shTenant.correo_argentino_token_expires_at ? new Date(shTenant.correo_argentino_token_expires_at as string) : null;
                       const expiryDays = tokenExpiry ? Math.ceil((tokenExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+                      const caToken = shTenant.correo_argentino_token as string | null;
+                      const caRevealed = revealed.has("correo_argentino_token");
                       return (
                         <div>
                           <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Correo Argentino</p>
-                          <dl className="grid grid-cols-3 gap-x-6 gap-y-3">
+                          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                             {shTenant.correo_argentino_customer_id && (
                               <div>
                                 <dt className="text-sm text-muted">Customer ID</dt>
@@ -767,44 +796,110 @@ export default function ClienteDetallePage() {
                                 </dd>
                               </div>
                             )}
+                            {caToken && (
+                              <div>
+                                <dt className="text-sm text-muted">Token</dt>
+                                <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono text-xs truncate max-w-[180px]">{caRevealed ? caToken : "••••••••••••••••••••"}</span>
+                                  <button type="button" onClick={() => toggleReveal("correo_argentino_token")} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
+                                    {caRevealed ? "Ocultar" : "Revelar"}
+                                  </button>
+                                  {caRevealed && <CopyButton value={caToken} field="sh-ca-token" copied={copied} onCopy={copyToClipboard} />}
+                                </dd>
+                              </div>
+                            )}
                           </dl>
                         </div>
                       );
                     })()}
 
-                    <div>
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Credenciales</p>
-                      <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-                        {([
-                          { label: "MP Access Token", field: "mp_access_token" },
-                          { label: "MP Public Key", field: "mp_public_key" },
-                          { label: "Resend API Key", field: "resend_api_key" },
-                          { label: "Envia Access Token", field: "envia_access_token" },
-                          { label: "CA Token", field: "correo_argentino_token" },
-                        ] as const).map(({ label, field }) => {
-                          const value = shTenant[field] as string | null;
-                          const isRevealed = revealed.has(field);
-                          return (
-                            <div key={field}>
-                              <dt className="text-sm text-muted">{label}</dt>
-                              <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
-                                {value ? (
-                                  <>
-                                    <span className="font-mono text-xs truncate max-w-[180px]">{isRevealed ? value : "••••••••••••••••••••"}</span>
-                                    <button type="button" onClick={() => toggleReveal(field)} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
-                                      {isRevealed ? "Ocultar" : "Revelar"}
-                                    </button>
-                                    {isRevealed && <CopyButton value={value} field={`sh-cred-${field}`} copied={copied} onCopy={copyToClipboard} />}
-                                  </>
-                                ) : (
-                                  <span className="text-muted text-xs">No configurado</span>
-                                )}
+                    {(shTenant.mp_access_token || shTenant.mp_public_key) && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">MercadoPago</p>
+                        <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          {([
+                            { label: "Access Token", field: "mp_access_token" },
+                            { label: "Public Key", field: "mp_public_key" },
+                          ] as const).map(({ label, field }) => {
+                            const value = shTenant[field] as string | null;
+                            const isRevealed = revealed.has(field);
+                            return (
+                              <div key={field}>
+                                <dt className="text-sm text-muted">{label}</dt>
+                                <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
+                                  {value ? (
+                                    <>
+                                      <span className="font-mono text-xs truncate max-w-[180px]">{isRevealed ? value : "••••••••••••••••••••"}</span>
+                                      <button type="button" onClick={() => toggleReveal(field)} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
+                                        {isRevealed ? "Ocultar" : "Revelar"}
+                                      </button>
+                                      {isRevealed && <CopyButton value={value} field={`sh-cred-${field}`} copied={copied} onCopy={copyToClipboard} />}
+                                    </>
+                                  ) : (
+                                    <span className="text-muted text-xs">No configurado</span>
+                                  )}
+                                </dd>
+                              </div>
+                            );
+                          })}
+                        </dl>
+                      </div>
+                    )}
+
+                    {(shTenant.resend_api_key || shTenant.resend_from_email || shTenant.resend_domain_verified) && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Resend</p>
+                        <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          {shTenant.resend_api_key && (() => {
+                            const value = shTenant.resend_api_key as string;
+                            const isRevealed = revealed.has("resend_api_key");
+                            return (
+                              <div>
+                                <dt className="text-sm text-muted">API Key</dt>
+                                <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono text-xs truncate max-w-[180px]">{isRevealed ? value : "••••••••••••••••••••"}</span>
+                                  <button type="button" onClick={() => toggleReveal("resend_api_key")} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
+                                    {isRevealed ? "Ocultar" : "Revelar"}
+                                  </button>
+                                  {isRevealed && <CopyButton value={value} field="sh-cred-resend_api_key" copied={copied} onCopy={copyToClipboard} />}
+                                </dd>
+                              </div>
+                            );
+                          })()}
+                          {shTenant.resend_from_email && (
+                            <div>
+                              <dt className="text-sm text-muted">Email de envío</dt>
+                              <dd className="text-sm font-medium text-heading flex items-center">
+                                {shTenant.resend_from_email as string}
+                                <CopyButton value={shTenant.resend_from_email as string} field="sh-resend-from" copied={copied} onCopy={copyToClipboard} />
                               </dd>
                             </div>
-                          );
-                        })}
-                      </dl>
-                    </div>
+                          )}
+                        </dl>
+                      </div>
+                    )}
+
+                    {shTenant.envia_access_token && (() => {
+                      const value = shTenant.envia_access_token as string;
+                      const isRevealed = revealed.has("envia_access_token");
+                      return (
+                        <div>
+                          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Envia</p>
+                          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            <div>
+                              <dt className="text-sm text-muted">Access Token</dt>
+                              <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
+                                <span className="font-mono text-xs truncate max-w-[180px]">{isRevealed ? value : "••••••••••••••••••••"}</span>
+                                <button type="button" onClick={() => toggleReveal("envia_access_token")} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
+                                  {isRevealed ? "Ocultar" : "Revelar"}
+                                </button>
+                                {isRevealed && <CopyButton value={value} field="sh-cred-envia_access_token" copied={copied} onCopy={copyToClipboard} />}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )
               ) : null

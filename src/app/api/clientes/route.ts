@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+
+function dominioToUrl(dominio: string | null | undefined): string | null {
+  if (!dominio) return null;
+  const clean = dominio.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return `https://${clean}`;
+}
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { revalidatePath } from "next/cache";
@@ -74,8 +80,13 @@ export async function POST(request: NextRequest) {
     const user = await getSessionUser();
     const body = await request.json();
 
-    // Extraer credenciales de auth (no son campos del CRM)
-    const { email: authEmail, password: authPassword, ...crmBody } = body;
+    // Extraer credenciales de auth y campos del tenant SitioHoy (no son campos del CRM)
+    const {
+      email: authEmail, password: authPassword,
+      resend_api_key, resend_from_email, resend_domain_verified,
+      mp_access_token, mp_public_key, correo_argentino_customer_id,
+      ...crmBody
+    } = body;
 
     if (!authEmail || !authPassword) {
       return NextResponse.json(
@@ -131,17 +142,28 @@ export async function POST(request: NextRequest) {
       : planNombre.includes("emprendimiento")
       ? 200
       : 50;
+    const tenantInsert: Record<string, unknown> = {
+      id: tenant_id,
+      name: parsed.data.nombre_empresa,
+      slug,
+      url: dominioToUrl(parsed.data.dominio),
+      plan: planNombre || "esencial",
+      status: "active",
+      max_products: maxProducts,
+    };
+    if (mp_access_token) tenantInsert.mp_access_token = mp_access_token;
+    if (mp_public_key) tenantInsert.mp_public_key = mp_public_key;
+    if (correo_argentino_customer_id) tenantInsert.correo_argentino_customer_id = correo_argentino_customer_id;
+    if (resend_api_key) tenantInsert.resend_api_key = resend_api_key;
+    if (resend_from_email) {
+      tenantInsert.resend_from_email = resend_from_email;
+      tenantInsert.resend_domain = resend_from_email.includes("@") ? resend_from_email.split("@")[1] : null;
+    }
+    if (resend_domain_verified) tenantInsert.resend_domain_verified = true;
+
     const { error: tenantError } = await supabaseSitioHoy
       .from("tenants")
-      .insert({
-        id: tenant_id,
-        name: parsed.data.nombre_empresa,
-        slug,
-        url: parsed.data.dominio ? `https://${parsed.data.dominio}` : null,
-        plan: planNombre || "esencial",
-        status: "active",
-        max_products: maxProducts,
-      });
+      .insert(tenantInsert);
 
     if (tenantError) {
       return NextResponse.json(

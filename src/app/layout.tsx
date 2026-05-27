@@ -32,7 +32,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col relative overflow-x-hidden">
+      <body className="min-h-full flex flex-col relative overflow-x-hidden" suppressHydrationWarning>
         {/* Capas de fondo para Glassmorphism */}
         <div className="bg-solid-layer" />
         <div className="bg-decoration-blur bg-accent top-[-10%] right-[-10%] opacity-20" />

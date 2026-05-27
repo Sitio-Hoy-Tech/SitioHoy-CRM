@@ -6,7 +6,9 @@ const ALLOWED_UPDATE = [
   "origin_name", "origin_phone", "origin_address", "origin_city",
   "origin_postal_code", "origin_state",
   "correo_argentino_customer_id",
-  "mp_access_token", "mp_public_key", "resend_api_key", "envia_access_token",
+  "mp_access_token", "mp_public_key",
+  "resend_api_key", "resend_from_email", "resend_domain", "resend_domain_verified",
+  "envia_access_token",
 ] as const;
 
 export async function GET(
