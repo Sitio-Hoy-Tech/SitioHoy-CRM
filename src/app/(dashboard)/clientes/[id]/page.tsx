@@ -900,6 +900,28 @@ export default function ClienteDetallePage() {
                         </div>
                       );
                     })()}
+
+                    {shTenant.revalidation_secret && (() => {
+                      const value = shTenant.revalidation_secret as string;
+                      const isRevealed = revealed.has("revalidation_secret");
+                      return (
+                        <div>
+                          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Revalidación ISR</p>
+                          <dl className="grid grid-cols-1 gap-y-3">
+                            <div>
+                              <dt className="text-sm text-muted">Revalidation Secret</dt>
+                              <dd className="text-sm text-heading flex items-center gap-1.5 mt-0.5">
+                                <span className="font-mono text-xs truncate max-w-[260px]">{isRevealed ? value : "••••••••••••••••••••"}</span>
+                                <button type="button" onClick={() => toggleReveal("revalidation_secret")} className="text-xs text-muted hover:text-accent transition-colors whitespace-nowrap">
+                                  {isRevealed ? "Ocultar" : "Revelar"}
+                                </button>
+                                {isRevealed && <CopyButton value={value} field="sh-cred-revalidation_secret" copied={copied} onCopy={copyToClipboard} />}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )
               ) : null

@@ -126,6 +126,37 @@ export interface AuditLog {
   usuario?: Pick<Usuario, "id" | "nombre" | "apellido">;
 }
 
+export interface KbCategoria {
+  id: string;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  icono: string | null;
+  posicion: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface KbArticulo {
+  id: string;
+  categoria_id: string;
+  titulo: string;
+  slug: string;
+  resumen: string | null;
+  contenido: string;
+  posicion: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  // Relaciones expandidas
+  categoria?: KbCategoria;
+  usuario_creador?: Pick<Usuario, "id" | "nombre" | "apellido">;
+  usuario_editor?: Pick<Usuario, "id" | "nombre" | "apellido">;
+}
+
 // ============================================
 // API Types
 // ============================================

@@ -7,3 +7,9 @@ export async function getSessionUser() {
   }
   return session.user;
 }
+
+export async function requireAdmin() {
+  const user = await getSessionUser();
+  if (user.role !== "admin") throw new Error("FORBIDDEN");
+  return user;
+}

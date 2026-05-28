@@ -85,3 +85,22 @@ export const usuarioSchema = z.object({
   password: z.string().min(6, "Mínimo 6 caracteres"),
   rol: z.enum(["admin", "sales", "manager"]).default("admin"),
 });
+
+// ============================================
+// Base de Conocimientos
+// ============================================
+
+export const kbCategoriaSchema = z.object({
+  nombre: z.string().min(1, "Nombre requerido"),
+  descripcion: z.string().optional().or(z.literal("")),
+  icono: z.string().optional().or(z.literal("")),
+  posicion: z.coerce.number().int().default(0),
+});
+
+export const kbArticuloSchema = z.object({
+  categoria_id: z.string().uuid("Categoría requerida"),
+  titulo: z.string().min(1, "Título requerido"),
+  resumen: z.string().optional().or(z.literal("")),
+  contenido: z.string().min(1, "Contenido requerido"),
+  posicion: z.coerce.number().int().default(0),
+});

@@ -31,6 +31,42 @@ const EyeOffIcon = () => (
   </svg>
 );
 
+const RefreshIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+  </svg>
+);
+
+// ─── SecretInput ──────────────────────────────────────────────────────────────
+
+function SecretInput({ label, value, onChange }: {
+  label: string; value: string; onChange: (val: string) => void;
+}) {
+  function generate() {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    onChange(btoa(Array.from(bytes, b => String.fromCharCode(b)).join("")));
+  }
+  return (
+    <div>
+      <label className="block text-sm font-medium text-body mb-1.5">{label}</label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Generá o pegá una clave"
+          className="flex-1 min-w-0 bg-input border border-edge rounded-lg px-3.5 py-2.5 text-sm text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-200 font-mono"
+        />
+        <button type="button" onClick={generate}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-edge bg-elevated text-sm text-muted hover:text-heading hover:border-accent transition-all duration-200 whitespace-nowrap flex-shrink-0">
+          <RefreshIcon /> Generar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── PasswordInput ────────────────────────────────────────────────────────────
 
 function PasswordInput({ label, required, value, onChange, placeholder }: {
@@ -128,7 +164,7 @@ export default function NuevoClientePage() {
     plan_id: "", etiqueta_negocio_id: "",
     fecha_pago: new Date().toISOString().split("T")[0],
     mp_cuenta_id: "" as string | null,
-    email: "", password: "",
+    email: "", password: "", revalidation_secret: "",
     mp_access_token: "", mp_public_key: "", correo_argentino_customer_id: "",
     resend_api_key: "", resend_from_email: "", resend_domain_verified: false,
   });
@@ -318,6 +354,10 @@ export default function NuevoClientePage() {
           placeholder="Mínimo 6 caracteres"
         />
       </div>
+      <SecretInput label="Revalidation Secret"
+        value={form.revalidation_secret}
+        onChange={val => set("revalidation_secret", val)}
+      />
     </div>,
 
     /* 3 — Integraciones */
