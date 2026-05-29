@@ -4,6 +4,7 @@ const CHAT_MSG_EVENT = "crm:new-chat-message";
 const CHAT_RESET_EVENT = "crm:chat-unread-reset";
 const SUPPORT_REQUEST_EVENT = "crm:support-requested";
 const SUPPORT_RESOLVED_EVENT = "crm:support-resolved";
+const BADGES_REFRESH_EVENT = "crm:badges-refresh";
 
 export type ChatMessageEvent = {
   id: string;
@@ -45,6 +46,10 @@ export function dispatchSupportResolved() {
   window.dispatchEvent(new CustomEvent(SUPPORT_RESOLVED_EVENT));
 }
 
+export function dispatchBadgesRefresh() {
+  window.dispatchEvent(new CustomEvent(BADGES_REFRESH_EVENT));
+}
+
 // Single hook that fetches both counts in one request.
 // The Sidebar uses this to avoid two parallel fetches to the same endpoint.
 export function useChatBadges() {
@@ -52,13 +57,17 @@ export function useChatBadges() {
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    fetch("/api/chats/unread")
-      .then(r => r.json())
-      .then(json => {
-        if (typeof json.count === "number") setUnread(json.count);
-        if (typeof json.pending_count === "number") setPending(json.pending_count);
-      })
-      .catch(() => {});
+    function fetchCounts() {
+      fetch("/api/chats/unread")
+        .then(r => r.json())
+        .then(json => {
+          if (typeof json.count === "number") setUnread(json.count);
+          if (typeof json.pending_count === "number") setPending(json.pending_count);
+        })
+        .catch(() => {});
+    }
+
+    fetchCounts();
 
     function onNewMsg(e: Event) {
       const msg = (e as CustomEvent<ChatMessageEvent>).detail;
@@ -70,16 +79,19 @@ export function useChatBadges() {
     }
     function onRequest() { setPending(c => c + 1); }
     function onResolved() { setPending(c => Math.max(0, c - 1)); }
+    function onRefresh() { fetchCounts(); }
 
     window.addEventListener(CHAT_MSG_EVENT, onNewMsg);
     window.addEventListener(CHAT_RESET_EVENT, onReset);
     window.addEventListener(SUPPORT_REQUEST_EVENT, onRequest);
     window.addEventListener(SUPPORT_RESOLVED_EVENT, onResolved);
+    window.addEventListener(BADGES_REFRESH_EVENT, onRefresh);
     return () => {
       window.removeEventListener(CHAT_MSG_EVENT, onNewMsg);
       window.removeEventListener(CHAT_RESET_EVENT, onReset);
       window.removeEventListener(SUPPORT_REQUEST_EVENT, onRequest);
       window.removeEventListener(SUPPORT_RESOLVED_EVENT, onResolved);
+      window.removeEventListener(BADGES_REFRESH_EVENT, onRefresh);
     };
   }, []);
 

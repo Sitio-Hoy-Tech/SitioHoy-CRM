@@ -87,10 +87,7 @@ export async function POST(
       return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404, headers });
     }
     if (session.status === "closed") {
-      await supabaseAdmin
-        .from("chat_sessions")
-        .update({ status: "open", updated_at: new Date().toISOString() })
-        .eq("id", session_id);
+      return NextResponse.json({ error: "La sesión está cerrada" }, { status: 403, headers });
     }
 
     const { data: cliente } = await supabaseAdmin

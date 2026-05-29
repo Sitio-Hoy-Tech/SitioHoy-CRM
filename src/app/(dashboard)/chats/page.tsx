@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Button from "@/components/common/Button";
-import { useOnNewChatMessage, useOnSupportRequest, dispatchChatUnreadReset, dispatchSupportResolved, setActiveChatSession, type ChatMessageEvent } from "@/stores/chatStore";
+import { useOnNewChatMessage, useOnSupportRequest, dispatchChatUnreadReset, dispatchSupportResolved, dispatchBadgesRefresh, setActiveChatSession, type ChatMessageEvent } from "@/stores/chatStore";
 
 type Cliente = { id: string; nombre_empresa: string };
 
@@ -23,7 +23,7 @@ type Session = {
 type Message = {
   id: string;
   session_id: string;
-  sender_type: "agent" | "client";
+  sender_type: "agent" | "client" | "system";
   sender_name: string | null;
   content: string;
   created_at: string;
@@ -42,6 +42,70 @@ function formatTime(iso: string) {
 
 function formatMsgTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function isImageUrl(content: string) {
+  try {
+    const url = new URL(content.trim());
+    return /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/40 rounded-full p-2 transition-colors"
+        aria-label="Cerrar"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="imagen"
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+function MessageContent({ content }: { content: string }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  if (isImageUrl(content)) {
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={content.trim()}
+          alt="imagen"
+          className="rounded-lg object-cover cursor-pointer"
+          style={{ width: 200, height: 150 }}
+          loading="lazy"
+          onClick={() => setLightbox(content.trim())}
+        />
+        {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      </>
+    );
+  }
+  return <>{content}</>;
 }
 
 function ElapsedTimer({ since, nowMs }: { since: string; nowMs: number }) {
@@ -87,6 +151,8 @@ function ChatPageInner() {
   const [creating, setCreating] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const hasPending = sessions.some(s => s.status === "pending" && s.pending_since);
@@ -109,6 +175,9 @@ function ChatPageInner() {
     const json = await res.json();
     if (json.data) setSessions(json.data);
   }, []);
+
+  const loadSessionsRef = useRef(loadSessions);
+  loadSessionsRef.current = loadSessions;
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
@@ -158,12 +227,24 @@ function ChatPageInner() {
 
   // Real-time: update session status when client requests support
   useOnSupportRequest(useCallback(({ session_id, pending_since }) => {
-    setSessions(prev => prev.map(s => s.id === session_id ? { ...s, status: "pending", pending_since } : s));
+    const exists = sessionsRef.current.some(s => s.id === session_id);
+    if (exists) {
+      setSessions(prev => prev.map(s => s.id === session_id ? { ...s, status: "pending", pending_since } : s));
+    } else {
+      loadSessionsRef.current();
+      dispatchBadgesRefresh();
+    }
   }, []));
 
   // Real-time: listen to new messages via ChatNotifier events
   useOnNewChatMessage(useCallback((msg: ChatMessageEvent) => {
     // Update session list preview
+    const sessionExists = sessionsRef.current.some(s => s.id === msg.session_id);
+    if (!sessionExists) {
+      loadSessionsRef.current();
+      dispatchBadgesRefresh();
+      return;
+    }
     setSessions(prev => prev.map(s => {
       if (s.id !== msg.session_id) return s;
       return {
@@ -286,6 +367,20 @@ function ChatPageInner() {
     if (res.ok) {
       dispatchSupportResolved();
       setSessions(prev => prev.map(s => s.id === activeId ? { ...s, status: "open", pending_since: null } : s));
+    }
+  }
+
+  async function deleteSession() {
+    if (!activeId || deleting) return;
+    setDeleting(true);
+    const res = await fetch(`/api/chats/${activeId}`, { method: "DELETE" });
+    setDeleting(false);
+    if (res.ok) {
+      setSessions(prev => prev.filter(s => s.id !== activeId));
+      setActiveId(null);
+      setMessages([]);
+      setConfirmDelete(false);
+      router.push("/chats", { scroll: false });
     }
   }
 
@@ -506,7 +601,56 @@ function ChatPageInner() {
                   Reabrir conversación
                 </Button>
               )}
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                title="Eliminar conversación"
+                className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
+
+            {/* Confirm delete modal */}
+            {confirmDelete && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setConfirmDelete(false)}>
+                <div className="border border-edge rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4" style={{ backgroundColor: "#0f172a" }} onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-heading">Eliminar conversación</p>
+                      <p className="text-xs text-muted">Esta acción no se puede deshacer</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-body mb-6">
+                    Se borrarán permanentemente todos los mensajes e imágenes de esta conversación con <span className="font-medium">{activeSession?.cliente?.nombre_empresa ?? "este cliente"}</span>.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="flex-1 px-4 py-2 text-sm rounded-lg border border-edge text-body hover:bg-elevated transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deleteSession}
+                      disabled={deleting}
+                      className="flex-1 px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-60"
+                    >
+                      {deleting ? "Eliminando…" : "Eliminar"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Messages */}
@@ -538,6 +682,22 @@ function ChatPageInner() {
             )}
 
             {messages.map((msg, i) => {
+              if (msg.sender_type === "system") {
+                return (
+                  <div key={msg.id} className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-edge" />
+                    <span className="text-[11px] text-muted/70 whitespace-nowrap">
+                      {msg.content === "__session_reopened__"
+                      ? "Conversación reabierta"
+                      : msg.content === "__session_closed__"
+                      ? "Conversación cerrada"
+                      : msg.content}
+                    </span>
+                    <div className="flex-1 h-px bg-edge" />
+                  </div>
+                );
+              }
+
               const isAgent = msg.sender_type === "agent";
               const prevMsg = i > 0 ? messages[i - 1] : null;
               const showSender = !prevMsg || prevMsg.sender_type !== msg.sender_type;
@@ -569,7 +729,7 @@ function ChatPageInner() {
                           : `bg-elevated text-body border border-edge ${showSender ? "rounded-tr-2xl" : "rounded-tr-2xl"} rounded-tl-sm rounded-bl-2xl rounded-br-2xl`
                       } ${msg._optimistic ? "opacity-70" : ""}`}
                     >
-                      {msg.content}
+                      <MessageContent content={msg.content} />
                     </div>
                     {isLast && (
                       <p className="text-[10px] text-muted/60 mt-1 px-1">
@@ -603,7 +763,7 @@ function ChatPageInner() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-end gap-3">
+              <div className="flex items-center gap-3">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -619,7 +779,7 @@ function ChatPageInner() {
                   disabled={!input.trim()}
                   className="flex-shrink-0"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </Button>
