@@ -45,6 +45,7 @@ type SHForm = {
   correo_argentino_customer_id: string; mp_access_token: string;
   mp_public_key: string; resend_api_key: string; resend_from_email: string;
   resend_domain_verified: boolean; envia_access_token: string;
+  revalidation_secret: string;
 };
 
 const SH_PLAN_OPTIONS = [
@@ -65,7 +66,7 @@ const EMPTY_SH_FORM: SHForm = {
   origin_postal_code: "", origin_state: "",
   correo_argentino_customer_id: "", mp_access_token: "", mp_public_key: "",
   resend_api_key: "", resend_from_email: "", resend_domain_verified: false,
-  envia_access_token: "",
+  envia_access_token: "", revalidation_secret: "",
 };
 
 function shFormFromData(d: Record<string, any>): SHForm {
@@ -89,6 +90,7 @@ function shFormFromData(d: Record<string, any>): SHForm {
     resend_from_email: d.resend_from_email || "",
     resend_domain_verified: d.resend_domain_verified === true,
     envia_access_token: d.envia_access_token || "",
+    revalidation_secret: d.revalidation_secret || "",
   };
 }
 
@@ -327,7 +329,6 @@ export default function ClienteDetallePage() {
       body: JSON.stringify({
         ...shForm,
         max_products: shForm.max_products !== "" ? Number(shForm.max_products) : null,
-        resend_domain: shForm.resend_from_email.includes("@") ? shForm.resend_from_email.split("@")[1] : null,
       }),
     });
     const json = await res.json();
@@ -654,6 +655,25 @@ export default function ClienteDetallePage() {
                         <Input label="Access Token" value={shForm.envia_access_token} onChange={e => updateShField("envia_access_token", e.target.value)} />
                         <div />
                       </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Revalidación ISR</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-elevated border border-edge rounded-lg px-3 py-2 font-mono text-xs text-body truncate min-w-0">
+                          {shForm.revalidation_secret || <span className="text-muted">Sin secret</span>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShForm(prev => ({ ...prev, revalidation_secret: crypto.randomUUID() }))}
+                          className="text-xs text-accent hover:underline whitespace-nowrap flex-shrink-0"
+                        >
+                          Regenerar
+                        </button>
+                      </div>
+                      {shForm.revalidation_secret !== (shTenant?.revalidation_secret || "") && (
+                        <p className="text-xs text-yellow-400">El secret será actualizado al guardar.</p>
+                      )}
                     </div>
                   </form>
                 ) : (

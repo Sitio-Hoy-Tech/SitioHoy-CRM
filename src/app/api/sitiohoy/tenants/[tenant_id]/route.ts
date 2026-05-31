@@ -7,8 +7,9 @@ const ALLOWED_UPDATE = [
   "origin_postal_code", "origin_state",
   "correo_argentino_customer_id",
   "mp_access_token", "mp_public_key",
-  "resend_api_key", "resend_from_email", "resend_domain", "resend_domain_verified",
+  "resend_api_key",
   "envia_access_token",
+  "revalidation_secret",
 ] as const;
 
 export async function GET(
