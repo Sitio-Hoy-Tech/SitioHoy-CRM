@@ -4,6 +4,16 @@ import { getSessionUser } from "@/lib/api";
 
 const PAGE_SIZE = 50;
 
+function buildPreview(content: string): string {
+  try {
+    const p = JSON.parse(content);
+    if (p.__type === "attachment" && p.name) {
+      return (p.mime as string)?.startsWith("image/") ? `📷 ${p.name}` : `📎 ${p.name}`;
+    }
+  } catch { /* not JSON */ }
+  return content.slice(0, 120);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -68,7 +78,7 @@ export async function POST(
       .from("chat_sessions")
       .update({
         last_message_at: message.created_at,
-        last_message_preview: content.slice(0, 120),
+        last_message_preview: buildPreview(content),
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);

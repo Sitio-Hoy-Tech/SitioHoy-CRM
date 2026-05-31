@@ -30,6 +30,14 @@ type Message = {
   _optimistic?: boolean;
 };
 
+type AttachmentData = {
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
+  caption?: string;
+};
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -51,6 +59,32 @@ function isImageUrl(content: string) {
   } catch {
     return false;
   }
+}
+
+function parseAttachment(content: string): AttachmentData | null {
+  try {
+    const p = JSON.parse(content);
+    if (p.__type === "attachment" && p.url && p.name) {
+      return { url: p.url, name: p.name, size: p.size ?? 0, mime: p.mime ?? "", caption: p.caption };
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function buildLocalPreview(content: string): string {
+  try {
+    const p = JSON.parse(content);
+    if (p.__type === "attachment" && p.name) {
+      return (p.mime as string)?.startsWith("image/") ? `📷 ${p.name}` : `📎 ${p.name}`;
+    }
+  } catch { /* not JSON */ }
+  return content.slice(0, 120);
 }
 
 function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
@@ -86,8 +120,65 @@ function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
   );
 }
 
-function MessageContent({ content }: { content: string }) {
+function MessageContent({ content, isAgent = false }: { content: string; isAgent?: boolean }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
+
+  const attachment = parseAttachment(content);
+  if (attachment) {
+    const isImg = attachment.mime.startsWith("image/");
+    if (isImg) {
+      return (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={attachment.url}
+            alt={attachment.name}
+            className="rounded-lg object-cover cursor-pointer"
+            style={{ width: 200, height: 150 }}
+            loading="lazy"
+            onClick={() => setLightbox(attachment.url)}
+          />
+          {attachment.caption && (
+            <p className="text-sm mt-1.5 whitespace-pre-wrap break-words">{attachment.caption}</p>
+          )}
+          {lightbox && <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />}
+        </>
+      );
+    }
+    return (
+      <>
+        <a
+          href={attachment.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download={attachment.name}
+          className="flex items-center gap-3 group"
+          style={{ minWidth: 180 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isAgent ? "bg-white/20" : "bg-accent/10"}`}>
+            <svg className={`w-5 h-5 ${isAgent ? "text-white" : "text-accent"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-medium truncate max-w-[180px] ${isAgent ? "text-white" : "text-heading"}`}>
+              {attachment.name}
+            </p>
+            <p className={`text-xs mt-0.5 ${isAgent ? "text-white/60" : "text-muted"}`}>
+              {formatFileSize(attachment.size)} · Descargar
+            </p>
+          </div>
+          <svg className={`w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isAgent ? "text-white/80" : "text-accent"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </a>
+        {attachment.caption && (
+          <p className="text-sm mt-2 whitespace-pre-wrap break-words">{attachment.caption}</p>
+        )}
+      </>
+    );
+  }
 
   if (isImageUrl(content)) {
     return (
@@ -144,6 +235,9 @@ function ChatPageInner() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; previewUrl: string | null } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -164,6 +258,7 @@ function ChatPageInner() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef<string | null>(null);
   activeIdRef.current = activeId;
   const sessionsRef = useRef<Session[]>([]);
@@ -287,12 +382,9 @@ function ChatPageInner() {
     }
   }
 
-  async function sendMessage() {
-    if (!activeId || !input.trim() || sending) return;
-    const content = input.trim();
-    setInput("");
+  async function doSend(content: string) {
+    if (!activeId) return;
     setSending(true);
-
     const tempId = `temp-${Date.now()}`;
     const tempMsg: Message = {
       id: tempId,
@@ -318,11 +410,62 @@ function ChatPageInner() {
       setMessages(prev => prev.map(m => m.id === tempId ? real : m));
       setSessions(prev => prev.map(s =>
         s.id === activeId
-          ? { ...s, last_message_at: real.created_at, last_message_preview: content.slice(0, 120) }
+          ? { ...s, last_message_at: real.created_at, last_message_preview: buildLocalPreview(content) }
           : s
       ));
     } else {
       setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  }
+
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    setPendingFile({ file, previewUrl });
+    setUploadError(null);
+  }
+
+  function cancelFile() {
+    if (pendingFile?.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl);
+    setPendingFile(null);
+    setUploadError(null);
+  }
+
+  async function sendMessage() {
+    if (!activeId || sending || uploading) return;
+    const text = input.trim();
+    if (!text && !pendingFile) return;
+
+    setInput("");
+    setUploadError(null);
+
+    if (pendingFile) {
+      setUploading(true);
+      const fd = new FormData();
+      fd.append("file", pendingFile.file);
+      const uploadRes = await fetch(`/api/chats/${activeId}/upload`, { method: "POST", body: fd });
+      setUploading(false);
+
+      if (!uploadRes.ok) {
+        const j = await uploadRes.json().catch(() => ({}));
+        setUploadError((j as { error?: string }).error ?? "Error al subir el archivo");
+        setInput(text);
+        return;
+      }
+
+      const { url, name, size, mime } = await uploadRes.json() as { url: string; name: string; size: number; mime: string };
+      const content = JSON.stringify({
+        __type: "attachment", url, name, size, mime,
+        ...(text ? { caption: text } : {}),
+      });
+
+      if (pendingFile.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl);
+      setPendingFile(null);
+      await doSend(content);
+    } else {
+      await doSend(text);
     }
   }
 
@@ -729,7 +872,7 @@ function ChatPageInner() {
                           : `bg-elevated text-body border border-edge ${showSender ? "rounded-tr-2xl" : "rounded-tr-2xl"} rounded-tl-sm rounded-bl-2xl rounded-br-2xl`
                       } ${msg._optimistic ? "opacity-70" : ""}`}
                     >
-                      <MessageContent content={msg.content} />
+                      <MessageContent content={msg.content} isAgent={isAgent} />
                     </div>
                     {isLast && (
                       <p className="text-[10px] text-muted/60 mt-1 px-1">
@@ -763,26 +906,71 @@ function ChatPageInner() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Escribí tu mensaje… (Enter para enviar, Shift+Enter para nueva línea)"
-                  rows={2}
-                  className="flex-1 bg-elevated border border-edge rounded-xl px-4 py-3 text-sm text-body placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-                />
-                <Button
-                  onClick={sendMessage}
-                  loading={sending}
-                  disabled={!input.trim()}
-                  className="flex-shrink-0"
-                >
-                  <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </Button>
+              <div className="space-y-2">
+                {pendingFile && (
+                  <div className="flex items-center gap-3 bg-elevated rounded-xl px-3 py-2.5 border border-accent/30">
+                    {pendingFile.previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={pendingFile.previewUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-heading truncate">{pendingFile.file.name}</p>
+                      <p className="text-xs text-muted">{formatFileSize(pendingFile.file.size)}</p>
+                    </div>
+                    <button type="button" onClick={cancelFile} className="p-1 text-muted hover:text-heading transition-colors flex-shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-shrink-0 p-2 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                    title="Adjuntar archivo"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+                    className="sr-only"
+                    onChange={handleFilePick}
+                  />
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={pendingFile ? "Añadir comentario (opcional)…" : "Escribí tu mensaje… (Enter para enviar, Shift+Enter para nueva línea)"}
+                    rows={2}
+                    className="flex-1 bg-elevated border border-edge rounded-xl px-4 py-3 text-sm text-body placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    loading={sending || uploading}
+                    disabled={!input.trim() && !pendingFile}
+                    className="flex-shrink-0"
+                  >
+                    <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </Button>
+                </div>
+                {uploadError && (
+                  <p className="text-xs text-red-400">{uploadError}</p>
+                )}
               </div>
             )}
           </div>
