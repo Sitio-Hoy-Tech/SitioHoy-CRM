@@ -131,6 +131,11 @@ export async function PUT(
         shUpdate.url = dominioToUrl(parsed.data.dominio);
       }
 
+      // current_period_end cuando cambia la fecha de pago
+      if (parsed.data.fecha_pago !== anterior.fecha_pago && cliente.fecha_vencimiento) {
+        shUpdate.current_period_end = cliente.fecha_vencimiento;
+      }
+
       if (Object.keys(shUpdate).length > 0) {
         const { error: shError } = await supabaseSitioHoy
           .from("tenants")
