@@ -131,9 +131,14 @@ export async function PUT(
         shUpdate.url = dominioToUrl(parsed.data.dominio);
       }
 
-      // current_period_end y desuspensión cuando cambia la fecha de pago
+      // current_period_end y desuspensión cuando cambia la fecha de pago.
+      // fecha_vencimiento se almacena como UTC midnight (ej: 2026-05-29T00:00:00Z).
+      // En Argentina (UTC-3) ese valor se muestra como el día anterior (28/05).
+      // Restamos 1 día UTC para que el dashboard de SitioHoy muestre la misma fecha que el CRM.
       if (parsed.data.fecha_pago !== anterior.fecha_pago && cliente.fecha_vencimiento) {
-        shUpdate.current_period_end = cliente.fecha_vencimiento;
+        const v = new Date(cliente.fecha_vencimiento);
+        v.setUTCDate(v.getUTCDate() - 1);
+        shUpdate.current_period_end = v.toISOString();
         shUpdate.suspended_at = null;
       }
 
