@@ -86,21 +86,9 @@ export async function POST(request: NextRequest) {
       resend_api_key, resend_from_email, resend_domain_verified,
       mp_access_token, mp_public_key, correo_argentino_customer_id,
       revalidation_secret,
+      existing_tenant_id,
       ...crmBody
     } = body;
-
-    if (!authEmail || !authPassword) {
-      return NextResponse.json(
-        { error: "Email y contraseña del panel son requeridos" },
-        { status: 400 }
-      );
-    }
-    if (authPassword.length < 6) {
-      return NextResponse.json(
-        { error: "La contraseña debe tener al menos 6 caracteres" },
-        { status: 400 }
-      );
-    }
 
     const parsed = clienteSchema.safeParse(crmBody);
     if (!parsed.success) {
@@ -112,16 +100,88 @@ export async function POST(request: NextRequest) {
 
     // Verificar dominio único en el CRM (solo si se proporcionó)
     if (parsed.data.dominio) {
-      const { data: existing } = await supabaseAdmin
+      const { data: existingDominio } = await supabaseAdmin
         .from("clientes")
         .select("id")
         .eq("dominio", parsed.data.dominio)
         .is("deleted_at", null)
         .single();
 
-      if (existing) {
+      if (existingDominio) {
         return NextResponse.json({ error: "El dominio ya está registrado" }, { status: 409 });
       }
+    }
+
+    // ── Modo importar: vincular a tenant existente de SitioHoy ───────────────
+    if (existing_tenant_id) {
+      // Validar que el tenant existe en SitioHoy
+      const { data: tenantSH, error: tenantSHError } = await supabaseSitioHoy
+        .from("tenants")
+        .select("id")
+        .eq("id", existing_tenant_id)
+        .single();
+
+      if (tenantSHError || !tenantSH) {
+        return NextResponse.json(
+          { error: "El tenant indicado no existe en SitioHoy" },
+          { status: 404 }
+        );
+      }
+
+      // Validar que no haya ya un cliente CRM con ese tenant_id
+      const { data: existingCRM } = await supabaseAdmin
+        .from("clientes")
+        .select("id")
+        .eq("tenant_id", existing_tenant_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (existingCRM) {
+        return NextResponse.json(
+          { error: "Este tenant ya está vinculado a otro cliente del CRM" },
+          { status: 409 }
+        );
+      }
+
+      const { data: cliente, error: clienteError } = await supabaseAdmin
+        .from("clientes")
+        .insert({
+          ...parsed.data,
+          tenant_id: existing_tenant_id,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (clienteError) {
+        return NextResponse.json({ error: clienteError.message }, { status: 500 });
+      }
+
+      await registrarAuditoria({
+        usuario_id: user.id,
+        tabla_afectada: "clientes",
+        registro_id: cliente.id,
+        accion: "CREATE",
+        cambios_nuevos: cliente,
+      });
+
+      await tomarSnapshotMRR();
+      revalidatePath("/");
+      return NextResponse.json({ data: cliente }, { status: 201 });
+    }
+
+    // ── Modo normal: crear tenant + usuario nuevos ────────────────────────────
+    if (!authEmail || !authPassword) {
+      return NextResponse.json(
+        { error: "Email y contraseña del panel son requeridos" },
+        { status: 400 }
+      );
+    }
+    if (authPassword.length < 6) {
+      return NextResponse.json(
+        { error: "La contraseña debe tener al menos 6 caracteres" },
+        { status: 400 }
+      );
     }
 
     // Generar UUID real para el tenant
