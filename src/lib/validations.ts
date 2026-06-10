@@ -45,7 +45,18 @@ export const clienteSchema = z.object({
   fecha_pago: z.string().min(1, "Fecha de pago requerida"),
   tenant_id: z.string().uuid("Tenant ID inválido").optional().or(z.literal("")).transform(v => v || null),
   mp_cuenta_id: z.string().uuid().nullable().optional(),
-});
+  pago_unico: z.boolean().optional(),
+  precio_pago_unico: z.preprocess(
+    v => (v === "" || v == null ? null : Number(v)),
+    z.number().positive("El precio del pago único debe ser positivo").nullable()
+  ).optional(),
+})
+  .refine(d => !d.pago_unico || (d.precio_pago_unico != null && d.precio_pago_unico > 0), {
+    message: "Ingresá el precio del pago único",
+    path: ["precio_pago_unico"],
+  })
+  // El precio personalizado solo aplica a pagos únicos
+  .transform(d => ({ ...d, precio_pago_unico: d.pago_unico ? d.precio_pago_unico ?? null : null }));
 
 // ============================================
 // Planes

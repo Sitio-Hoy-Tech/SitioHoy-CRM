@@ -7,6 +7,7 @@ import Input from "@/components/common/Input";
 import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
+import CurrencyInput from "@/components/common/CurrencyInput";
 import type { Contacto, Plan, EtiquetaNegocio, MpCuenta } from "@/types";
 import MpCuentaSelect from "@/components/common/MpCuentaSelect";
 
@@ -224,6 +225,8 @@ export default function NuevoClientePage() {
     nombre_empresa: "", contacto_id: "", dominio: "",
     plan_id: "", etiqueta_negocio_id: "",
     fecha_pago: new Date().toISOString().split("T")[0],
+    pago_unico: false,
+    precio_pago_unico: "",
     mp_cuenta_id: "" as string | null,
     email: "", password: "", revalidation_secret: "",
     mp_access_token: "", mp_public_key: "", correo_argentino_customer_id: "",
@@ -340,6 +343,7 @@ export default function NuevoClientePage() {
     if (currentStepKey === "plan") {
       if (!form.plan_id)    return "Seleccioná un plan";
       if (!form.fecha_pago) return "La fecha de pago es requerida";
+      if (form.pago_unico && !form.precio_pago_unico) return "Ingresá el precio del pago único";
     }
     if (currentStepKey === "acceso") {
       if (!form.email.trim())              return "El email es requerido";
@@ -499,9 +503,33 @@ export default function NuevoClientePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                 </svg>
                 <p className="text-sm text-heading">
-                  {selectedPlan.nombre} — <span className="font-bold text-accent">${Number(selectedPlan.precio).toLocaleString("es-AR")}/mes</span>
+                  {form.pago_unico ? (
+                    <>{selectedPlan.nombre} — <span className="font-bold text-accent">{form.precio_pago_unico ? `$${Number(form.precio_pago_unico).toLocaleString("es-AR")}` : "$—"} (pago único)</span></>
+                  ) : (
+                    <>{selectedPlan.nombre} — <span className="font-bold text-accent">${Number(selectedPlan.precio).toLocaleString("es-AR")}/mes</span></>
+                  )}
                 </p>
               </div>
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="pago_unico"
+                  checked={form.pago_unico}
+                  onChange={e => setForm(p => ({ ...p, pago_unico: e.target.checked }))}
+                  className="rounded"
+                />
+                <label htmlFor="pago_unico" className="text-sm text-body">Pago único</label>
+              </div>
+              <p className="text-xs text-muted mt-1">No es una suscripción mensual: no se incluye en el MRR.</p>
+            </div>
+            {form.pago_unico && (
+              <CurrencyInput label="Precio del pago único" required
+                value={form.precio_pago_unico}
+                onChange={val => setForm(p => ({ ...p, precio_pago_unico: val }))}
+                placeholder="Precio acordado con el cliente"
+              />
             )}
           </div>
           <div className="space-y-3">
@@ -511,9 +539,11 @@ export default function NuevoClientePage() {
             <div>
               <label className="block text-sm font-medium text-body mb-1.5">Vencimiento</label>
               <div className="w-full border border-edge rounded-lg px-3.5 py-2.5 text-sm text-muted bg-elevated">
-                {fechaVencimiento || "—"}
+                {form.pago_unico ? "Sin vencimiento" : fechaVencimiento || "—"}
               </div>
-              <p className="text-xs text-muted mt-1">30 días después del pago</p>
+              <p className="text-xs text-muted mt-1">
+                {form.pago_unico ? "Los pagos únicos no vencen" : "30 días después del pago"}
+              </p>
             </div>
           </div>
         </div>

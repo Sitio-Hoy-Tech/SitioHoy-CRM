@@ -186,7 +186,7 @@ export default async function DashboardPage() {
                 ultimosVencimientos.map((venc) => (
                   <Link key={venc.id} href={`/clientes/${venc.id}`} className="flex flex-col px-6 py-4 hover:bg-white/5 transition-colors">
                     <span className="text-sm font-bold text-heading">{venc.nombre_empresa}</span>
-                    <span className="text-[11px] text-danger font-medium mt-1">Expira el {new Date(venc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
+                    <span className="text-[11px] text-danger font-medium mt-1">Expira el {new Date(venc.fecha_vencimiento!).toLocaleDateString("es-AR")}</span>
                   </Link>
                 ))
               ) : (

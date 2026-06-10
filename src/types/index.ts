@@ -82,8 +82,10 @@ export interface Cliente {
   tenant_id: string;
   etiqueta_negocio_id: string;
   fecha_pago: string;
-  fecha_vencimiento: string;
+  fecha_vencimiento: string | null;
   estado: boolean;
+  pago_unico: boolean;
+  precio_pago_unico: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

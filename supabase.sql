@@ -133,6 +133,8 @@ CREATE TABLE clientes (
   fecha_pago TIMESTAMPTZ NOT NULL,
   fecha_vencimiento TIMESTAMPTZ,
   estado BOOLEAN DEFAULT true,
+  pago_unico BOOLEAN NOT NULL DEFAULT false,
+  precio_pago_unico DECIMAL(10, 2),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ NULL,
@@ -187,13 +189,17 @@ CREATE INDEX idx_audit_fecha ON audit_log(created_at);
 CREATE OR REPLACE FUNCTION calcular_fecha_vencimiento()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.fecha_vencimiento = NEW.fecha_pago + INTERVAL '30 days';
+  IF NEW.pago_unico THEN
+    NEW.fecha_vencimiento = NULL;
+  ELSE
+    NEW.fecha_vencimiento = NEW.fecha_pago + INTERVAL '30 days';
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_clientes_vencimiento
-  BEFORE INSERT OR UPDATE OF fecha_pago ON clientes
+  BEFORE INSERT OR UPDATE OF fecha_pago, pago_unico ON clientes
   FOR EACH ROW EXECUTE FUNCTION calcular_fecha_vencimiento();
 
 -- ============================================

@@ -131,11 +131,17 @@ export async function PUT(
         shUpdate.url = dominioToUrl(parsed.data.dominio);
       }
 
-      // current_period_end y desuspensión cuando cambia la fecha de pago.
+      // current_period_end y desuspensión cuando cambia la fecha de pago o el modo de pago.
       // fecha_vencimiento se almacena como UTC midnight (ej: 2026-05-29T00:00:00Z).
       // En Argentina (UTC-3) ese valor se muestra como el día anterior (28/05).
       // Restamos 1 día UTC para que el dashboard de SitioHoy muestre la misma fecha que el CRM.
-      if (parsed.data.fecha_pago !== anterior.fecha_pago && cliente.fecha_vencimiento) {
+      if (cliente.pago_unico) {
+        // Pago único: el tenant no tiene período de suscripción
+        if (!anterior.pago_unico) {
+          shUpdate.current_period_end = null;
+          shUpdate.suspended_at = null;
+        }
+      } else if ((parsed.data.fecha_pago !== anterior.fecha_pago || anterior.pago_unico) && cliente.fecha_vencimiento) {
         const v = new Date(cliente.fecha_vencimiento);
         v.setUTCDate(v.getUTCDate() - 1);
         shUpdate.current_period_end = v.toISOString();
@@ -163,10 +169,11 @@ export async function PUT(
       cambios_nuevos: cliente,
     });
 
-    // Solo tomar snapshot si cambiaron el plan o el estado
+    // Solo tomar snapshot si cambiaron el plan, el estado o el modo de pago
     const planCambio = anterior?.plan_id !== cliente?.plan_id;
     const estadoCambio = anterior?.estado !== cliente?.estado;
-    if (planCambio || estadoCambio) await tomarSnapshotMRR();
+    const pagoUnicoCambio = anterior?.pago_unico !== cliente?.pago_unico;
+    if (planCambio || estadoCambio || pagoUnicoCambio) await tomarSnapshotMRR();
 
     return NextResponse.json({ data: cliente });
   } catch {
