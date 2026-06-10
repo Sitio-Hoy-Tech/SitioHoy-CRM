@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import Button from "@/components/common/Button";
 import Modal from "@/components/common/Modal";
 import Input from "@/components/common/Input";
@@ -40,12 +41,21 @@ type Gasto = {
 
 type Resumen = {
   mrr: number;
+  ingresosUnicos: number;
+  ingresos: number;
+  pagosUnicos: Array<{ empresa: string; plan: string; monto: number; fecha: string }>;
   totalGastos: number;
   balance: number;
   totalClientes: number;
   ingresosPorPlan: Array<{ nombre: string; precio: number; cantidad: number }>;
   gastosPorCategoria: Record<string, number>;
   tendencia: Array<{ mes: string; ingresos: number; gastos: number }>;
+};
+
+type HistoricoMes = { mes: string; mrr: number; unicos: number; ingresos: number; gastos: number; balance: number };
+type Historico = {
+  historico: HistoricoMes[];
+  totales: { mrr: number; unicos: number; ingresos: number; gastos: number; balance: number };
 };
 
 const EMPTY_FORM = { descripcion: "", monto: "", categoria: "otros", fecha: "", notas: "" };
@@ -73,15 +83,19 @@ export default function CajaPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Gasto | null>(null);
 
+  const [historico, setHistorico] = useState<Historico | null>(null);
+
   const fetchData = useCallback(async (mesActual: string) => {
     setLoading(true);
     const t = Date.now();
-    const [resRes, gastosRes] = await Promise.all([
+    const [resRes, gastosRes, histRes] = await Promise.all([
       fetch(`/api/caja/resumen?mes=${mesActual}&_t=${t}`, { cache: "no-store" }).then(r => r.json()),
       fetch(`/api/caja/gastos?mes=${mesActual}&limit=100&_t=${t}`, { cache: "no-store" }).then(r => r.json()),
+      fetch(`/api/caja/historico?_t=${t}`, { cache: "no-store" }).then(r => r.json()),
     ]);
     setResumen(resRes);
     setGastos(gastosRes.data || []);
+    setHistorico(histRes.historico ? histRes : null);
     setLoading(false);
   }, []);
 
@@ -153,9 +167,12 @@ export default function CajaPage() {
           {/* Cards resumen */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-card rounded-xl border border-edge p-5">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Ingresos (MRR)</p>
-              <p className="text-2xl font-bold text-accent">${formatARS(resumen.mrr)}</p>
-              <p className="text-xs text-muted mt-1">{resumen.totalClientes} clientes activos</p>
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Ingresos del mes</p>
+              <p className="text-2xl font-bold text-accent">${formatARS(resumen.ingresos)}</p>
+              <p className="text-xs text-muted mt-1">
+                MRR ${formatARS(resumen.mrr)} ({resumen.totalClientes} {resumen.totalClientes === 1 ? "cliente" : "clientes"})
+                {resumen.ingresosUnicos > 0 && ` + $${formatARS(resumen.ingresosUnicos)} en pagos únicos`}
+              </p>
             </div>
             <div className="bg-card rounded-xl border border-edge p-5">
               <p className="text-xs text-muted uppercase tracking-wider mb-1">Gastos del mes</p>
@@ -168,7 +185,7 @@ export default function CajaPage() {
                 {resumen.balance >= 0 ? "+" : ""}${formatARS(resumen.balance)}
               </p>
               <p className="text-xs text-muted mt-1">
-                {resumen.mrr > 0 ? `${Math.round((resumen.balance / resumen.mrr) * 100)}% de margen` : "—"}
+                {resumen.ingresos > 0 ? `${Math.round((resumen.balance / resumen.ingresos) * 100)}% de margen` : "—"}
               </p>
             </div>
             <div className="bg-card rounded-xl border border-edge p-5">
@@ -238,6 +255,21 @@ export default function CajaPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {resumen.pagosUnicos.length > 0 && (
+                  <div className="mt-5 pt-4 border-t border-edge">
+                    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Pagos únicos del mes</h3>
+                    <div className="space-y-2">
+                      {resumen.pagosUnicos.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-body font-medium">
+                            {p.empresa} <span className="text-muted text-xs font-normal">({p.plan} · {new Date(p.fecha).toLocaleDateString("es-AR", { timeZone: "UTC" })})</span>
+                          </span>
+                          <span className="text-heading font-semibold">${formatARS(p.monto)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -329,6 +361,71 @@ export default function CajaPage() {
               </div>
             </div>
           </div>
+
+          {/* Histórico de ingresos */}
+          {historico && historico.historico.length > 0 && (
+            <div className="bg-card rounded-xl border border-edge mt-6">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-edge">
+                <h2 className="text-sm font-semibold text-heading">Histórico</h2>
+                {historico.historico.length > 2 && (
+                  <Link href="/caja/historico" className="text-xs text-accent hover:underline">
+                    Ver historial completo ({historico.historico.length} meses) →
+                  </Link>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted uppercase tracking-wider">
+                      <th className="px-6 py-3 font-medium">Mes</th>
+                      <th className="px-4 py-3 font-medium text-right">MRR</th>
+                      <th className="px-4 py-3 font-medium text-right">Pagos únicos</th>
+                      <th className="px-4 py-3 font-medium text-right">Ingresos</th>
+                      <th className="px-4 py-3 font-medium text-right">Gastos</th>
+                      <th className="px-6 py-3 font-medium text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historico.historico.slice(0, 2).map(h => (
+                      <tr
+                        key={h.mes}
+                        className={`border-t border-edge hover:bg-elevated transition-colors ${h.mes === mes ? "bg-elevated/50" : ""}`}
+                      >
+                        <td className="px-6 py-3 text-body capitalize">
+                          <button onClick={() => setMes(h.mes)} className="hover:text-accent transition-colors capitalize">
+                            {new Date(`${h.mes}-15`).toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-right text-body">${formatARS(h.mrr)}</td>
+                        <td className="px-4 py-3 text-right text-body">
+                          {h.unicos > 0 ? `$${formatARS(h.unicos)}` : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-accent">${formatARS(h.ingresos)}</td>
+                        <td className="px-4 py-3 text-right text-red-400">
+                          {h.gastos > 0 ? `$${formatARS(h.gastos)}` : <span className="text-muted">—</span>}
+                        </td>
+                        <td className={`px-6 py-3 text-right font-semibold ${h.balance >= 0 ? "text-heading" : "text-red-400"}`}>
+                          {h.balance >= 0 ? "" : "-"}${formatARS(Math.abs(h.balance))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-edge bg-elevated/50">
+                      <td className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Total acumulado</td>
+                      <td className="px-4 py-3 text-right font-semibold text-heading">${formatARS(historico.totales.mrr)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-heading">${formatARS(historico.totales.unicos)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-accent">${formatARS(historico.totales.ingresos)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-red-400">${formatARS(historico.totales.gastos)}</td>
+                      <td className={`px-6 py-3 text-right font-bold ${historico.totales.balance >= 0 ? "text-heading" : "text-red-400"}`}>
+                        {historico.totales.balance >= 0 ? "" : "-"}${formatARS(Math.abs(historico.totales.balance))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
 

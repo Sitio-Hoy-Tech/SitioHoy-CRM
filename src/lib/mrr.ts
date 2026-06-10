@@ -6,6 +6,7 @@ export async function tomarSnapshotMRR() {
     .select("id, plan:planes(id, nombre, precio)")
     .is("deleted_at", null)
     .eq("estado", true)
+    .eq("pago_unico", false)
     .not("plan_id", "is", null);
 
   const lista = (clientes ?? []) as Array<{

@@ -40,6 +40,7 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 - Sección de Caja con MRR automático, gastos manuales e historial mensual
 - Envío de email personalizado para recuperación de contraseña via Resend
 - Integración MercadoPago: cuentas multi-cuenta, suscripciones recurrentes y webhooks por cuenta
+- **Chat de soporte en tiempo real**: widget cliente embebido en los paneles de administración, recibe mensajes y notificaciones de estado via Supabase Realtime
 
 ---
 
@@ -82,6 +83,7 @@ pg_cron (Supabase) → snapshot MRR diario a las 23:00 UTC
 - **Auth**: JWT sessions via NextAuth, middleware en `src/proxy.ts` protege todas las rutas del dashboard (excluye `/api/webhooks/*` que usan su propio mecanismo de autenticación por header)
 - **DB access**: Service role key en API routes (server), anon key + RLS en cliente
 - **Tickets**: La plataforma SitioHoy envía nuevos tickets via webhook HTTP al CRM. El CRM los almacena en su propia tabla `tickets` y los sirve via Supabase Realtime al browser
+- **Chat de soporte**: widget cliente (en `paneles-administracion`) se conecta al CRM via API REST + Supabase Realtime. Los operadores ven y responden chats en `/chats`. Mensajes, cierre y reapertura de sesiones se sincronizan en tiempo real via INSERT en `chat_messages`
 - **Real-time dashboard**: Supabase Realtime subscriptions para contactos, clientes y seguimientos
 - **MRR**: Calculado en vivo para el mes actual, snapshots históricos para meses pasados
 
@@ -339,11 +341,49 @@ El CRM usa dos bases de datos Supabase separadas:
 | detalle | JSONB | Array de `{ nombre, precio, cantidad }` por plan |
 | created_at | TIMESTAMPTZ | — |
 
+#### `chat_sessions`
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | Identificador único de la sesión |
+| cliente_id | UUID FK | → clientes |
+| tenant_id | TEXT | ID multi-tenant de la plataforma SitioHoy |
+| status | TEXT NOT NULL | `open` / `closed` / `pending` |
+| pending_since | TIMESTAMPTZ | Timestamp desde que está esperando operador |
+| last_message_at | TIMESTAMPTZ | Último mensaje (para ordenar la lista) |
+| last_message_preview | TEXT | Preview del último mensaje (hasta 120 chars) |
+| unread_agent_count | INTEGER | Mensajes no leídos por el operador |
+| created_at | TIMESTAMPTZ | — |
+| updated_at | TIMESTAMPTZ | — |
+
+#### `chat_messages`
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| session_id | UUID FK NOT NULL | → chat_sessions |
+| sender_type | TEXT NOT NULL | `client` / `agent` / `system` |
+| sender_name | TEXT | Nombre del remitente (null para mensajes de sistema) |
+| content | TEXT NOT NULL | Texto del mensaje, URL de imagen, o token de sistema |
+| created_at | TIMESTAMPTZ NOT NULL | — |
+
+**Mensajes de sistema (`sender_type = 'system'`):** no se renderizan como burbujas sino como separadores visuales. Los tokens posibles son:
+- `__session_closed__` — el operador cerró la conversación
+- `__session_reopened__` — el operador reabrió la conversación
+
 #### Tablas de catálogo
 - **`planes`**: id, nombre (UNIQUE), beneficios, precio (DECIMAL)
 - **`estados_contacto`**: id, nombre (UNIQUE) — ej: "Posible cliente", "Cliente"
 - **`etiquetas_negocio`**: id, nombre (UNIQUE) — ej: "Gimnasio", "Restaurante"
 - **`etiquetas_plantillas`**: id, nombre (UNIQUE) — categorías de templates
+
+### Storage
+
+| Bucket | Visibilidad | Uso |
+|--------|-------------|-----|
+| `chat-images` | Público | Imágenes enviadas en el chat de soporte |
+
+Las imágenes se organizan por sesión: `chat-images/{session_id}/{timestamp}-{random}.{ext}`. Se eliminan automáticamente al cerrar o eliminar la sesión (via Storage API desde los route handlers).
 
 ### Triggers
 
@@ -368,6 +408,8 @@ El CRM usa dos bases de datos Supabase separadas:
 |-------|----------|
 | `clientes`, `contactos`, `seguimiento_contactos` | SELECT público para Supabase Realtime |
 | `tickets` | SELECT público para Realtime + RESTRICTIVE deny-all para anon/authenticated |
+| `chat_messages` | SELECT para anon (necesario para Realtime en el widget cliente) |
+| `chat_sessions` | SELECT para anon (necesario para Realtime en el widget cliente) |
 | `caja_gastos` | RESTRICTIVE deny-all (solo service role) |
 | `caja_mrr_snapshots` | RESTRICTIVE deny-all (solo service role) |
 
@@ -521,6 +563,45 @@ Ambos endpoints están excluidos del middleware de NextAuth. Los tópicos espera
 }
 ```
 Registros con `source = 'contact_form'` son ignorados. La ruta está excluida del middleware de auth de NextAuth.
+
+### Chat de soporte (operadores)
+
+Rutas usadas por la interfaz del CRM (`/chats`). Requieren sesión NextAuth.
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/chats` | Lista de sesiones con último mensaje y conteo de no leídos |
+| PATCH | `/api/chats/[id]` | Cambiar estado (`open` / `closed` / `pending`) o marcar como leído |
+| DELETE | `/api/chats/[id]` | Eliminar sesión, mensajes e imágenes del storage |
+| GET | `/api/chats/[id]/messages` | Mensajes de una sesión (paginado, 50/página, orden desc) |
+| POST | `/api/chats/[id]/messages` | Enviar mensaje del agente |
+| GET | `/api/chats/session-info/[id]` | Info básica de la sesión (nombre del cliente) para toasts |
+
+**Lógica del PATCH `/api/chats/[id]`:**
+- Al cambiar a `closed` desde otro estado: inserta mensaje de sistema `__session_closed__` y limpia imágenes del storage del bucket `chat-images`
+- Al cambiar a `open` desde `closed`: inserta mensaje de sistema `__session_reopened__`
+- El body puede incluir `{ status }` y/o `{ markRead: true }` en la misma llamada
+
+### Chat de soporte (widget cliente)
+
+Rutas públicas consumidas por el widget `SupportChat.tsx` en `paneles-administracion`. Autenticación via `Bearer <token>` del usuario SitioHoy (validado contra la DB de SitioHoy).
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/client/chat/init` | Inicializa o recupera la sesión activa del cliente; retorna `session_id`, `status` y últimos 50 mensajes |
+| POST | `/api/client/chat/[session_id]/request-support` | Pone la sesión en `pending` para que un operador la tome |
+| GET | `/api/client/chat/[session_id]/messages` | Carga mensajes anteriores (paginación hacia atrás) |
+| POST | `/api/client/chat/[session_id]/messages` | Envía un mensaje del cliente; retorna 403 si la sesión está cerrada |
+
+**Lógica de `/api/client/chat/init`:**
+1. Busca sesión activa (`open` o `pending`) del cliente → la reutiliza
+2. Si no hay ninguna, busca la primera sesión `closed` y la reabre (UPDATE directo, sin mensaje de sistema)
+3. Si no existe ninguna sesión, crea una nueva con `status: open`
+4. Retorna los últimos 50 mensajes ya cargados para evitar una segunda request
+
+**Lógica de `/api/client/chat/[session_id]/messages` POST:**
+- Retorna `403` si la sesión tiene `status = closed` (no reabre silenciosamente)
+- Actualiza `last_message_at`, `last_message_preview` y `unread_agent_count` en la sesión
 
 ### Catálogos
 
@@ -727,6 +808,57 @@ Mismas que en desarrollo, con estos cambios:
 - Badge en el sidebar con contador de tickets nuevos: se inicializa al montar consultando los tickets con `status = new` en la DB, y se incrementa en tiempo real via Realtime
 - **Flujo de cambio de contraseña**: en tickets de tipo `password_reset_request`, botón "Enviar link de recuperación" → genera link via `auth.admin.generateLink()` → envía email personalizado HTML via Resend; el ticket se marca como solucionado automáticamente
 
+### Chat de soporte en tiempo real
+
+El módulo de chat permite a los clientes de SitioHoy comunicarse en tiempo real con los operadores del CRM.
+
+**Componentes involucrados:**
+- `ChatNotifier.tsx` — montado en el layout del dashboard, escucha eventos Realtime globales de chat
+- `/chats/page.tsx` — interfaz del operador: lista de sesiones, área de mensajes, acciones
+- `paneles-administracion/components/shared/SupportChat.tsx` — widget flotante embebido en los paneles del cliente
+
+**Flujo completo de una conversación:**
+
+```
+1. Cliente abre el widget → POST /api/client/chat/init
+   → retorna session_id + últimos mensajes
+
+2. Cliente solicita soporte → POST /api/client/chat/[id]/request-support
+   → sesión pasa a status: "pending"
+
+3. Supabase Realtime dispara UPDATE en chat_sessions (pending)
+   → ChatNotifier lo captura → toast + notificación SO → badge en sidebar
+
+4. Operador acepta → PATCH /api/chats/[id] { status: "open" }
+   → Widget cliente recibe UPDATE via Realtime → pasa a pantalla de chat
+
+5. Cliente y agente intercambian mensajes en tiempo real
+   → Cliente: POST /api/client/chat/[id]/messages
+   → Agente: POST /api/chats/[id]/messages
+   → Cada INSERT en chat_messages dispara Realtime en ambos lados
+
+6. Operador cierra → PATCH /api/chats/[id] { status: "closed" }
+   → CRM inserta mensaje de sistema __session_closed__ en chat_messages
+   → Widget cliente recibe el INSERT via Realtime → muestra pantalla "Consulta resuelta"
+   → Las imágenes de la sesión se eliminan del storage
+
+7. Si el cliente intenta enviar un mensaje con la sesión cerrada:
+   → API retorna 403 → widget navega a pantalla resuelta como fallback
+```
+
+**Mensajes de sistema:** cuando el operador cierra o reabre una sesión, el CRM inserta un mensaje con `sender_type: 'system'`. Estos no se renderizan como burbujas sino como separadores de línea en el historial.
+
+**Imágenes en el chat:** el cliente puede adjuntar imágenes (JPEG, PNG, GIF, WebP, máx. 5 MB). Se suben al bucket `chat-images` de Supabase Storage usando la anon key, organizadas por `{session_id}/{timestamp}.{ext}`. La URL pública se guarda como contenido del mensaje. Al cerrar o eliminar una sesión, todas las imágenes de esa carpeta se eliminan via Storage API.
+
+**Notificaciones al operador:**
+- Nuevo mensaje de cliente: toast con el nombre del cliente y preview del mensaje
+- Nueva solicitud de soporte (pending): toast + notificación nativa del SO + badge en sidebar
+
+**Realtime:**
+- `chat_messages` y `chat_sessions` están en la publicación `supabase_realtime`
+- Políticas RLS permiten SELECT al rol `anon` para que el widget cliente reciba eventos
+- Todas las escrituras usan `supabaseAdmin` (service role, bypasea RLS)
+
 ### Caja
 
 - Resumen mensual navegable con selector de mes personalizado (`MonthPicker`)
@@ -781,6 +913,27 @@ El componente `DashboardRealtimeManager` se suscribe a cambios en las tablas `co
 5. Al entrar a la sección de Tickets el contador se resetea
 
 El contador se inicializa al montar consultando `/api/solicitudes/nuevos` (tickets con `status = new` en la DB), por lo que el badge persiste correctamente al reabrir el CRM.
+
+### Supabase Realtime — Chat de soporte
+
+`ChatNotifier` abre dos canales WebSocket al proyecto Supabase del CRM:
+
+1. **`crm-chat-messages`** — escucha INSERT en `chat_messages`. Al recibir un mensaje de un cliente en una sesión que no es la activa, muestra un toast clickeable con el nombre del remitente y preview del mensaje. Filtra mensajes propios del agente para no auto-notificarse.
+
+2. **`crm-chat-sessions`** — escucha UPDATE en `chat_sessions`. Solo reacciona cuando `status = 'pending'` (nueva solicitud de soporte): dispara el evento `crm:support-request`, muestra toast y notificación nativa del SO.
+
+El widget cliente (`SupportChat.tsx` en `paneles-administracion`) abre su propio canal `client-chat-{session_id}` al mismo proyecto Supabase usando la anon key del CRM:
+- INSERT en `chat_messages` con filtro `session_id=eq.{id}`: recibe mensajes del agente y mensajes de sistema (`__session_closed__`, `__session_reopened__`)
+- UPDATE en `chat_sessions`: detecta cambios de estado como respaldo adicional
+
+### Supabase Storage — Imágenes de chat
+
+Las imágenes enviadas en el chat se almacenan en el bucket público `chat-images`. La estructura de carpetas es `{session_id}/{timestamp}-{random}.{ext}`.
+
+**Ciclo de vida:**
+- **Subida**: el widget cliente sube directamente a Storage usando la anon key, antes de enviar el POST del mensaje
+- **Eliminación al cerrar sesión**: `PATCH /api/chats/[id]` llama a `storage.list(session_id)` + `storage.remove(paths)` usando `supabaseAdmin`
+- **Eliminación al borrar sesión**: `DELETE /api/chats/[id]` hace lo mismo antes de borrar los registros de la DB
 
 ### Plataforma SitioHoy — Webhook de tickets
 

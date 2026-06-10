@@ -157,6 +157,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: clienteError.message }, { status: 500 });
       }
 
+      // Pago único: el tenant importado no tiene período de suscripción
+      if (parsed.data.pago_unico) {
+        const { error: shError } = await supabaseSitioHoy
+          .from("tenants")
+          .update({ current_period_end: null, suspended_at: null })
+          .eq("id", existing_tenant_id);
+
+        if (shError) {
+          console.error("[SitioHoy sync] Error limpiando current_period_end:", shError.message);
+        }
+      }
+
       await registrarAuditoria({
         usuario_id: user.id,
         tabla_afectada: "clientes",
@@ -212,6 +224,8 @@ export async function POST(request: NextRequest) {
       status: "active",
       max_products: maxProducts,
     };
+    // Pago único: el tenant no tiene período de suscripción
+    if (parsed.data.pago_unico) tenantInsert.current_period_end = null;
     if (mp_access_token) tenantInsert.mp_access_token = mp_access_token;
     if (mp_public_key) tenantInsert.mp_public_key = mp_public_key;
     if (correo_argentino_customer_id) tenantInsert.correo_argentino_customer_id = correo_argentino_customer_id;

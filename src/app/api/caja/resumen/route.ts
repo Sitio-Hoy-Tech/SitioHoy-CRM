@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         .select("id, plan:planes(id, nombre, precio)")
         .is("deleted_at", null)
         .eq("estado", true)
+        .eq("pago_unico", false)
         .not("plan_id", "is", null);
 
       const lista = (clientes ?? []) as Array<{
@@ -62,6 +63,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Pagos únicos: cuentan como ingreso en el mes de su fecha_pago.
+    // Se traen los últimos 6 meses de una sola vez (mes seleccionado + tendencia).
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const unicosDesde = ymd(new Date(year, month - 6, 1));
+    const unicosHasta = ymd(new Date(year, month, 1)); // exclusivo
+
+    const { data: unicos } = await supabaseAdmin
+      .from("clientes")
+      .select("nombre_empresa, fecha_pago, precio_pago_unico, plan:planes(nombre, precio)")
+      .is("deleted_at", null)
+      .eq("pago_unico", true)
+      .gte("fecha_pago", unicosDesde)
+      .lt("fecha_pago", unicosHasta);
+
+    const mesKey = `${year}-${String(month).padStart(2, "0")}`;
+    const unicosPorMes: Record<string, number> = {};
+    const pagosUnicos: Array<{ empresa: string; plan: string; monto: number; fecha: string }> = [];
+    for (const c of (unicos ?? []) as Array<{
+      nombre_empresa: string;
+      fecha_pago: string;
+      precio_pago_unico: string | null;
+      plan: { nombre: string; precio: string } | null;
+    }>) {
+      const key = (c.fecha_pago ?? "").slice(0, 7);
+      // Precio personalizado del pago único; el precio del plan queda como fallback
+      const monto = c.precio_pago_unico != null ? Number(c.precio_pago_unico) : c.plan ? Number(c.plan.precio) : 0;
+      unicosPorMes[key] = (unicosPorMes[key] ?? 0) + monto;
+      if (key === mesKey) {
+        pagosUnicos.push({ empresa: c.nombre_empresa, plan: c.plan?.nombre ?? "", monto, fecha: c.fecha_pago });
+      }
+    }
+    const ingresosUnicos = unicosPorMes[mesKey] ?? 0;
+
     // Gastos del mes seleccionado
     const { data: gastos } = await supabaseAdmin
       .from("caja_gastos")
@@ -93,7 +127,8 @@ export async function GET(request: NextRequest) {
         esCurrent ? Promise.resolve({ data: null }) : supabaseAdmin.from("caja_mrr_snapshots").select("mrr").eq("mes", desde).maybeSingle(),
       ]);
 
-      const ingresosMes = esCurrent ? mrr : (snapMes.data ? Number((snapMes.data as { mrr: number }).mrr) : 0);
+      const mrrMes = esCurrent ? mrr : (snapMes.data ? Number((snapMes.data as { mrr: number }).mrr) : 0);
+      const ingresosMes = mrrMes + (unicosPorMes[`${y}-${String(m).padStart(2, "0")}`] ?? 0);
 
       tendencia.push({
         mes: label,
@@ -104,8 +139,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       mrr,
+      ingresosUnicos,
+      ingresos: mrr + ingresosUnicos,
+      pagosUnicos,
       totalGastos,
-      balance: mrr - totalGastos,
+      balance: mrr + ingresosUnicos - totalGastos,
       totalClientes,
       ingresosPorPlan,
       gastosPorCategoria,

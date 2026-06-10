@@ -9,6 +9,7 @@ import Modal from "@/components/common/Modal";
 import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
+import CurrencyInput from "@/components/common/CurrencyInput";
 import type { Cliente, Contacto, Plan, EtiquetaNegocio, MpCuenta } from "@/types";
 import MpCuentaSelect from "@/components/common/MpCuentaSelect";
 
@@ -112,6 +113,7 @@ export default function ClienteDetallePage() {
   const [form, setForm] = useState({
     nombre_empresa: "", contacto_id: "", dominio: "", plan_id: "",
     etiqueta_negocio_id: "", fecha_pago: "", tenant_id: "",
+    pago_unico: false, precio_pago_unico: "",
   });
 
   // SitioHoy platform state
@@ -206,6 +208,8 @@ export default function ClienteDetallePage() {
             etiqueta_negocio_id: c.etiqueta_negocio_id || "",
             fecha_pago: c.fecha_pago?.split("T")[0] || "",
             tenant_id: c.tenant_id || "",
+            pago_unico: c.pago_unico === true,
+            precio_pago_unico: c.precio_pago_unico != null ? String(Math.round(Number(c.precio_pago_unico))) : "",
           });
         }
         setLoading(false);
@@ -518,6 +522,26 @@ export default function ClienteDetallePage() {
             onChange={(val) => updateField("etiqueta_negocio_id", val)}
           />
           <DatePicker label="Fecha de pago" required value={form.fecha_pago} onChange={(val) => updateField("fecha_pago", val)} />
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="pago_unico"
+                checked={form.pago_unico}
+                onChange={e => setForm(p => ({ ...p, pago_unico: e.target.checked }))}
+                className="rounded"
+              />
+              <label htmlFor="pago_unico" className="text-sm text-body">Pago único</label>
+            </div>
+            <p className="text-xs text-muted mt-1">No es una suscripción mensual: no se incluye en el MRR.</p>
+          </div>
+          {form.pago_unico && (
+            <CurrencyInput label="Precio del pago único" required
+              value={form.precio_pago_unico}
+              onChange={val => setForm(p => ({ ...p, precio_pago_unico: val }))}
+              placeholder="Precio acordado con el cliente"
+            />
+          )}
           <Input
             label="Tenant ID (SitioHoy)"
             placeholder="UUID del tenant en SitioHoy"
@@ -542,6 +566,11 @@ export default function ClienteDetallePage() {
                 }`}>
                   {cliente.estado ? "Activo" : "Inactivo"}
                 </span>
+                {cliente.pago_unico && (
+                  <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                    Pago único
+                  </span>
+                )}
                 {dias !== null && (
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     dias <= 0 ? "bg-red-500/15 text-red-400 border border-red-500/20"
@@ -571,7 +600,11 @@ export default function ClienteDetallePage() {
                 <div>
                   <dt className="text-sm text-muted">Plan</dt>
                   <dd className="text-sm font-medium text-heading">
-                    {cliente.plan?.nombre} — ${Number(cliente.plan?.precio || 0).toLocaleString("es-AR")}
+                    {cliente.plan?.nombre} — ${Number(
+                      cliente.pago_unico && cliente.precio_pago_unico != null
+                        ? cliente.precio_pago_unico
+                        : cliente.plan?.precio || 0
+                    ).toLocaleString("es-AR")}
                   </dd>
                 </div>
                 <div>

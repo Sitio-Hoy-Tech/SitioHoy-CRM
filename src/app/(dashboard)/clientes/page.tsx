@@ -186,11 +186,15 @@ export default function ClientesPage() {
                       <td className="px-4 py-3 text-body">{c.plan?.nombre || "-"}</td>
                       <td className="px-4 py-3 text-body">{c.etiqueta_negocio?.nombre || "-"}</td>
                       <td className="px-4 py-3">
-                        {c.fecha_vencimiento && (
+                        {c.pago_unico ? (
+                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                            Pago único
+                          </span>
+                        ) : c.fecha_vencimiento ? (
                           <span className={`text-sm ${dias !== null && dias <= 0 ? "text-red-400" : "text-body"}`}>
                             {new Date(c.fecha_vencimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                           </span>
-                        )}
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
