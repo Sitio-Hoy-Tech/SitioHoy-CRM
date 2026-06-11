@@ -45,7 +45,8 @@ type SHForm = {
   origin_state: string;
   correo_argentino_customer_id: string; mp_access_token: string;
   mp_public_key: string; resend_api_key: string; resend_from_email: string;
-  resend_domain_verified: boolean; envia_access_token: string;
+  resend_domain_verified: boolean; smpt_user: string; smpt_pass: string;
+  envia_access_token: string;
   revalidation_secret: string;
 };
 
@@ -67,6 +68,7 @@ const EMPTY_SH_FORM: SHForm = {
   origin_postal_code: "", origin_state: "",
   correo_argentino_customer_id: "", mp_access_token: "", mp_public_key: "",
   resend_api_key: "", resend_from_email: "", resend_domain_verified: false,
+  smpt_user: "", smpt_pass: "",
   envia_access_token: "", revalidation_secret: "",
 };
 
@@ -90,6 +92,8 @@ function shFormFromData(d: Record<string, any>): SHForm {
     resend_api_key: d.resend_api_key || "",
     resend_from_email: d.resend_from_email || "",
     resend_domain_verified: d.resend_domain_verified === true,
+    smpt_user: d.smpt_user || "",
+    smpt_pass: d.smpt_pass || "",
     envia_access_token: d.envia_access_token || "",
     revalidation_secret: d.revalidation_secret || "",
   };
@@ -679,6 +683,14 @@ export default function ClienteDetallePage() {
                       <div className="grid grid-cols-2 gap-4">
                         <Input label="API Key" value={shForm.resend_api_key} onChange={e => updateShField("resend_api_key", e.target.value)} placeholder="re_..." />
                         <div />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider">Cuenta de Hostinger</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Usuario" value={shForm.smpt_user} onChange={e => updateShField("smpt_user", e.target.value)} />
+                        <Input label="Contraseña" value={shForm.smpt_pass} onChange={e => updateShField("smpt_pass", e.target.value)} />
                       </div>
                     </div>
 

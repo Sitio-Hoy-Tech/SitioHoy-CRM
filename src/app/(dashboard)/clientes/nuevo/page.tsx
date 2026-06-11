@@ -160,7 +160,7 @@ const ALL_STEPS = [
   { label: "Plan",          description: "Plan y facturación",      key: "plan"          },
   { label: "Acceso",        description: "Panel SitioHoy",          key: "acceso"        },
   { label: "Integraciones", description: "MP y Correo Argentino",   key: "integraciones", optional: true },
-  { label: "Resend",        description: "Email transaccional",     key: "resend",        optional: true },
+  { label: "Hostinger",     description: "Email transaccional",     key: "hostinger",     optional: true },
 ];
 
 // ─── Vertical stepper ─────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ export default function NuevoClientePage() {
     mp_cuenta_id: "" as string | null,
     email: "", password: "", revalidation_secret: "",
     mp_access_token: "", mp_public_key: "", correo_argentino_customer_id: "",
-    resend_api_key: "", resend_from_email: "", resend_domain_verified: false,
+    smpt_user: "", smpt_pass: "",
   });
 
   useEffect(() => {
@@ -321,7 +321,7 @@ export default function NuevoClientePage() {
 
   // Pasos activos según el modo
   const activeSteps = modoImportar
-    ? ALL_STEPS.filter(s => s.key !== "acceso" && s.key !== "integraciones" && s.key !== "resend")
+    ? ALL_STEPS.filter(s => s.key !== "acceso" && s.key !== "integraciones" && s.key !== "hostinger")
     : ALL_STEPS;
 
   const currentStepKey = activeSteps[currentStep]?.key;
@@ -619,19 +619,21 @@ export default function NuevoClientePage() {
       </div>
     ),
 
-    resend: (
+    hostinger: (
       <div className="space-y-5">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-heading">Email transaccional</h2>
+            <h2 className="text-base font-semibold text-heading">Cuenta de Hostinger</h2>
             <span className="text-xs px-1.5 py-0.5 rounded border border-edge text-muted bg-elevated">Opcional</span>
           </div>
-          <p className="text-sm text-muted mt-0.5">Configuración de Resend para el envío de emails desde la tienda del cliente.</p>
+          <p className="text-sm text-muted mt-0.5">Credenciales de Hostinger para el envío de emails desde la tienda del cliente.</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <PasswordInput label="API Key de Resend"
-            value={form.resend_api_key} onChange={e => set("resend_api_key", e.target.value)}
-            placeholder="re_xxxxxxxxxxxx"
+          <Input label="Usuario"
+            value={form.smpt_user} onChange={e => set("smpt_user", e.target.value)}
+          />
+          <PasswordInput label="Contraseña"
+            value={form.smpt_pass} onChange={e => set("smpt_pass", e.target.value)}
           />
         </div>
       </div>
