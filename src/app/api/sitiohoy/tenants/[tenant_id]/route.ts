@@ -8,6 +8,7 @@ const ALLOWED_UPDATE = [
   "correo_argentino_customer_id",
   "mp_access_token", "mp_public_key",
   "resend_api_key",
+  "smpt_user", "smpt_pass",
   "envia_access_token",
   "revalidation_secret",
 ] as const;

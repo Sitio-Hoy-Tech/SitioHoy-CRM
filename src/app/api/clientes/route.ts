@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
     const {
       email: authEmail, password: authPassword,
       resend_api_key, resend_from_email, resend_domain_verified,
+      smpt_user, smpt_pass,
       mp_access_token, mp_public_key, correo_argentino_customer_id,
       revalidation_secret,
       existing_tenant_id,
@@ -235,6 +236,8 @@ export async function POST(request: NextRequest) {
       tenantInsert.resend_domain = resend_from_email.includes("@") ? resend_from_email.split("@")[1] : null;
     }
     if (resend_domain_verified) tenantInsert.resend_domain_verified = true;
+    if (smpt_user) tenantInsert.smpt_user = smpt_user;
+    if (smpt_pass) tenantInsert.smpt_pass = smpt_pass;
     if (revalidation_secret) tenantInsert.revalidation_secret = revalidation_secret;
 
     const { error: tenantError } = await supabaseSitioHoy
