@@ -9,6 +9,7 @@ import Toast from "@/components/common/Toast";
 import SearchableSelect from "@/components/common/SearchableSelect";
 import DatePicker from "@/components/common/DatePicker";
 import MonthPicker from "@/components/common/MonthPicker";
+import IngresosPorCuentaMp from "@/components/caja/IngresosPorCuentaMp";
 
 const CATEGORIAS = [
   { value: "infraestructura", label: "Infraestructura" },
@@ -273,6 +274,9 @@ export default function CajaPage() {
                   </div>
                 )}
               </div>
+
+              {/* Desglose por cuenta de Mercado Pago */}
+              <IngresosPorCuentaMp mes={mes} />
             </div>
 
             {/* RIGHT: gastos por categoría + lista */}
