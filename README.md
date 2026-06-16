@@ -37,9 +37,12 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 - Integración multi-tenant con la plataforma SitioHoy
 - Soft delete en todas las entidades
 - Sistema de tickets en tiempo real con notificaciones del sistema operativo
-- Sección de Caja con MRR automático, gastos manuales e historial mensual
-- Envío de email personalizado para recuperación de contraseña via Resend
+- Sección de Caja con MRR automático, gastos manuales, pagos únicos, historial mensual y desglose de ingresos por cuenta MercadoPago
+- Clientes con plan recurrente o de **pago único** (sin fecha de vencimiento, no cuentan para el MRR)
+- Importación de clientes desde un tenant ya existente de la plataforma SitioHoy
+- Envío de email personalizado para recuperación de contraseña via Hostinger SMTP
 - Integración MercadoPago: cuentas multi-cuenta, suscripciones recurrentes y webhooks por cuenta
+- **Base de Conocimientos**: artículos con editor Markdown, organizados por categoría
 - **Chat de soporte en tiempo real**: widget cliente embebido en los paneles de administración, recibe mensajes y notificaciones de estado via Supabase Realtime
 
 ---
@@ -58,7 +61,8 @@ SitioHoy CRM es una aplicación web full-stack diseñada para uso interno del eq
 | Hashing | bcryptjs | 3.0.3 |
 | Lenguaje | TypeScript | 5.x |
 | Inputs | react-select, react-datepicker, react-phone-number-input | — |
-| Email | Resend | 4.x |
+| Email | Nodemailer (Hostinger SMTP) | 9.x |
+| Markdown | react-markdown, remark-gfm | 10.x / 4.x |
 
 ---
 
@@ -75,8 +79,8 @@ Usuario → NextAuth (JWT) → Next.js App Router → Supabase CRM (nepjzwwkzsfe
                          Supabase Realtime (WebSocket) → tabla tickets
 
 Plataforma SitioHoy → POST /api/webhooks/ticket → tabla tickets (CRM DB)
-API Routes → Supabase SitioHoy Admin API → Resend (emails de recuperación)
-pg_cron (Supabase) → snapshot MRR diario a las 23:00 UTC
+API Routes → Supabase SitioHoy Admin API → Hostinger SMTP (emails de recuperación)
+pg_cron (Supabase) → snapshot MRR diario a las 23:00 UTC, backups diarios y purga de tickets archivados
 ```
 
 - **Rendering**: Server Components por defecto, Client Components solo donde hay interactividad
@@ -112,13 +116,19 @@ src/
 │   │   │   ├── planes/page.tsx
 │   │   │   ├── estados-contacto/page.tsx
 │   │   │   ├── etiquetas-negocio/page.tsx
-│   │   │   ├── etiquetas-plantillas/page.tsx
 │   │   │   └── mp-cuentas/page.tsx       # Cuentas MercadoPago (CRUD)
 │   │   ├── solicitudes/
 │   │   │   ├── page.tsx              # Lista de tickets con filtros y estados
 │   │   │   └── [id]/page.tsx         # Detalle completo del ticket
 │   │   ├── caja/
-│   │   │   └── page.tsx              # MRR, gastos, tendencia mensual
+│   │   │   ├── page.tsx              # MRR, pagos únicos, gastos, tendencia mensual
+│   │   │   └── historico/page.tsx    # Totales acumulados y tabla mensual paginada
+│   │   ├── base-conocimientos/
+│   │   │   ├── page.tsx              # Lista de artículos por categoría
+│   │   │   ├── nuevo/page.tsx        # Crear artículo (editor Markdown)
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx          # Vista del artículo
+│   │   │       └── editar/page.tsx   # Editar artículo
 │   │   ├── usuarios/page.tsx
 │   │   ├── auditoria/page.tsx
 │   │   ├── estadisticas/page.tsx
@@ -146,27 +156,32 @@ src/
 │   │   ├── catalogos/
 │   │   │   ├── estados-contacto/route.ts + [id]/route.ts
 │   │   │   ├── etiquetas-negocio/route.ts + [id]/route.ts
-│   │   │   ├── etiquetas-plantillas/route.ts + [id]/route.ts
 │   │   │   └── planes/route.ts + [id]/route.ts
 │   │   ├── usuarios/route.ts + [id]/route.ts
 │   │   ├── auditoria/route.ts
+│   │   ├── kb/
+│   │   │   ├── articulos/route.ts + [id]/route.ts      # CRUD de artículos
+│   │   │   └── categorias/route.ts + [id]/route.ts     # CRUD de categorías
 │   │   ├── solicitudes/
 │   │   │   ├── route.ts              # GET tickets con filtros (DB CRM)
 │   │   │   ├── nuevos/route.ts       # GET conteo de tickets con status=new
 │   │   │   └── [id]/
 │   │   │       ├── route.ts          # GET / PATCH estado
-│   │   │       └── reset-password/route.ts  # POST — envía email de recuperación via Resend
+│   │   │       └── reset-password/route.ts  # POST — envía email de recuperación via Hostinger SMTP
 │   │   ├── webhooks/
 │   │   │   ├── ticket/route.ts                         # POST — recibe tickets desde SitioHoy
 │   │   │   └── mercadopago/
 │   │   │       ├── route.ts                            # POST — webhook genérico MP (fallback)
 │   │   │       └── [cuenta_id]/route.ts                # POST — webhook por cuenta (con secret)
 │   │   ├── caja/
-│   │   │   ├── resumen/route.ts      # GET resumen mensual (MRR + gastos + tendencia)
+│   │   │   ├── resumen/route.ts      # GET resumen mensual (MRR + pagos únicos + gastos + tendencia)
+│   │   │   ├── historico/route.ts    # GET totales acumulados por mes (paginado)
+│   │   │   ├── ingresos-mp/route.ts  # GET desglose de ingresos por cuenta MercadoPago
 │   │   │   └── gastos/
 │   │   │       ├── route.ts          # GET / POST gastos
 │   │   │       └── [id]/route.ts     # PUT / DELETE gastos
 │   │   └── sitiohoy/tenants/
+│   │       ├── route.ts                        # GET — buscar tenant existente por tenant_id (importar cliente)
 │   │       └── [tenant_id]/
 │   │           ├── route.ts                    # GET / PATCH — datos del tenant
 │   │           └── users/
@@ -203,7 +218,12 @@ src/
 │   ├── supabase.ts               # supabaseAdmin (service role) + supabase (anon, client-side)
 │   ├── supabase-sitiohoy.ts      # Cliente service role para DB de SitioHoy
 │   ├── mercadopago.ts            # createSubscription, getSubscription, cancelSubscription, verifyWebhookSignature
-│   └── mrr.ts                    # tomarSnapshotMRR() — upsert snapshot mensual
+│   ├── mrr.ts                    # tomarSnapshotMRR() — upsert snapshot mensual, incluye desglose por cuenta MP
+│   ├── mailer.ts                 # sendMail() — Hostinger SMTP via Nodemailer (emails del propio CRM)
+│   ├── audit.ts                  # Helper para insertar filas en audit_log
+│   ├── validations.ts            # Schemas Zod compartidos
+│   ├── cors.ts                   # Headers CORS para rutas públicas (webhooks, chat cliente)
+│   └── api.ts                    # Helper de fetch interno
 ├── types/
 │   └── index.ts
 └── proxy.ts                      # Middleware NextAuth — protege rutas del dashboard
@@ -265,9 +285,13 @@ El CRM usa dos bases de datos Supabase separadas:
 | mp_subscription_id | VARCHAR | ID de preapproval en MercadoPago |
 | mp_init_point | TEXT | URL de pago generada por MP |
 | mp_status | VARCHAR | Estado de la suscripción MP (`pending` / `authorized` / `cancelled` / `paused`) |
+| pago_unico | BOOLEAN | Si es `true`, el cliente pagó una sola vez (no recurrente) |
+| precio_pago_unico | DECIMAL | Precio cobrado en el pago único (independiente del precio del plan) |
 | estado | ENUM | `active` / `inactive` |
 | created_by | UUID FK | → usuarios |
 | deleted_at | TIMESTAMPTZ | Soft delete |
+
+> **Pago único**: cuando `pago_unico = true`, el trigger `trg_clientes_vencimiento` deja `fecha_vencimiento` en `NULL` (sin renovación) y el cliente queda excluido del cálculo de MRR; el monto de `precio_pago_unico` se contabiliza como ingreso único en el mes de `fecha_pago` (ver sección Caja).
 
 #### `mp_cuentas`
 | Columna | Tipo | Descripción |
@@ -339,6 +363,7 @@ El CRM usa dos bases de datos Supabase separadas:
 | mrr | DECIMAL | MRR calculado ese mes |
 | total_clientes | INTEGER | Cantidad de clientes activos |
 | detalle | JSONB | Array de `{ nombre, precio, cantidad }` por plan |
+| detalle_cuentas | JSONB | Desglose de MRR por cuenta MercadoPago (incluye bucket "Sin cuenta MP") |
 | created_at | TIMESTAMPTZ | — |
 
 #### `chat_sessions`
@@ -371,11 +396,36 @@ El CRM usa dos bases de datos Supabase separadas:
 - `__session_closed__` — el operador cerró la conversación
 - `__session_reopened__` — el operador reabrió la conversación
 
+#### `kb_categorias`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| nombre | VARCHAR | — |
+| slug | VARCHAR UNIQUE | Usado en la URL del artículo |
+| descripcion | TEXT | — |
+| icono | VARCHAR | Nombre del ícono a mostrar |
+| posicion | INTEGER | Orden de despliegue |
+| deleted_at | TIMESTAMPTZ | Soft delete |
+
+#### `kb_articulos`
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | UUID PK | — |
+| categoria_id | UUID FK | → kb_categorias |
+| titulo | VARCHAR | — |
+| slug | VARCHAR UNIQUE | — |
+| resumen | TEXT | Bajada corta para el listado |
+| contenido | TEXT | Cuerpo del artículo en Markdown |
+| posicion | INTEGER | Orden de despliegue dentro de la categoría |
+| created_by, updated_by | UUID FK | → usuarios |
+| deleted_at | TIMESTAMPTZ | Soft delete |
+
 #### Tablas de catálogo
 - **`planes`**: id, nombre (UNIQUE), beneficios, precio (DECIMAL)
 - **`estados_contacto`**: id, nombre (UNIQUE) — ej: "Posible cliente", "Cliente"
 - **`etiquetas_negocio`**: id, nombre (UNIQUE) — ej: "Gimnasio", "Restaurante"
-- **`etiquetas_plantillas`**: id, nombre (UNIQUE) — categorías de templates
+
+> **Tablas legacy (sin UI):** `plantillas` y `etiquetas_plantillas` se mantienen en la base por datos históricos, pero ya no tienen pantalla ni API propia en el CRM.
 
 ### Storage
 
@@ -387,20 +437,40 @@ Las imágenes se organizan por sesión: `chat-images/{session_id}/{timestamp}-{r
 
 ### Triggers
 
-- `trg_clientes_vencimiento` — dispara `calcular_fecha_vencimiento()` en INSERT y en UPDATE **solo cuando `fecha_pago` cambia**. Asigna `fecha_vencimiento = fecha_pago + INTERVAL '30 days'`. No interviene cuando el webhook de MP actualiza `fecha_vencimiento` directamente.
-- `set_updated_at` — actualiza `updated_at` automáticamente en `caja_gastos`
+- `trg_clientes_vencimiento` — dispara `calcular_fecha_vencimiento()` en INSERT y en UPDATE **cuando cambian `fecha_pago` o `pago_unico`**. Si `pago_unico = true` deja `fecha_vencimiento` en `NULL`; si no, asigna `fecha_vencimiento = fecha_pago + INTERVAL '30 days'`. No interviene cuando el webhook de MP actualiza `fecha_vencimiento` directamente.
+- `set_updated_at` / `update_updated_at` — actualizan `updated_at` automáticamente (la primera en `caja_gastos`, la segunda en el resto de las tablas con esa columna).
+- `audit_delete` — dispara `snapshots.capture_delete()` BEFORE DELETE en la mayoría de las tablas (incluye soft-deletes que terminan en hard delete y los DELETE directos de `tickets`/`chat_*`). Guarda la fila completa en `snapshots.deleted_rows` antes de borrarla, independiente del `audit_log` manual.
+
+### Esquema `snapshots` — backups y auditoría de borrados
+
+Además del `audit_log` manual (vía `src/lib/audit.ts`), la DB del CRM corre un sistema de respaldo automático en el esquema `snapshots`:
+
+| Objeto | Tipo | Descripción |
+|--------|------|-------------|
+| `snapshots.table_snapshots` | Tabla | Snapshot diario de todas las tablas (vía cron) |
+| `snapshots.deleted_rows` | Tabla | Copia de cada fila borrada (vía trigger `audit_delete`) |
+| `snapshots.take_snapshot()` | Función | Copia todas las tablas listadas a `table_snapshots`; retención de 30 días (1 año para `clientes`, `caja_gastos`, `caja_mrr_snapshots`, `tickets`) |
+| `snapshots.capture_delete()` | Función | Inserta la fila borrada en `deleted_rows` antes del DELETE |
+
+> ✅ **RLS habilitado** en `snapshots.table_snapshots` y `snapshots.deleted_rows` (sin policies): por defecto deniega a `anon`/`authenticated`, mientras que `postgres`/`service_role` siguen funcionando igual porque tienen `BYPASSRLS` — el cron de snapshots, el trigger de borrado y los restores manuales no se ven afectados. Antes de este cambio, ninguno de los dos roles tenía siquiera `USAGE` sobre el schema `snapshots`, así que esto es una capa adicional de defensa, no una corrección de un acceso activo.
 
 ### Cron jobs (pg_cron — Supabase CRM)
 
 | Job | Schedule | Descripción |
 |-----|----------|-------------|
-| `mrr-snapshot-diario` | `0 23 * * *` | Ejecuta `tomar_snapshot_mrr()` todos los días a las 23:00 UTC para garantizar snapshots históricos de MRR |
+| `mrr-snapshot-diario` | `0 23 * * *` | Ejecuta `tomar_snapshot_mrr()` todos los días a las 23:00 UTC para garantizar snapshots históricos de MRR (incluye desglose por plan y por cuenta MP) |
+| `daily-table-snapshots` | `0 9 * * *` | Ejecuta `snapshots.take_snapshot()` — backup diario de todas las tablas |
+| `purge-archived-tickets` | `0 10 * * *` | Borra tickets con `status = 'archived'` y más de 1 mes de antigüedad |
 
 ### Índices
 
 - `contactos`: estado_id, etiqueta_negocio_id, email, fecha_contacto, origen
 - `audit_log`: usuario_id, tabla_afectada, created_at
 - `tickets`: tenant_id, status, created_at DESC
+- `kb_articulos`: slug, categoria_id
+- `clientes`: dominio, tenant_id, plan_id, estado, mp_cuenta_id, mp_subscription_id, fecha_vencimiento
+- `chat_sessions`: tenant_id, last_message_at DESC
+- `chat_messages`: (session_id, created_at DESC)
 
 ### Row Level Security (RLS)
 
@@ -412,6 +482,8 @@ Las imágenes se organizan por sesión: `chat-images/{session_id}/{timestamp}-{r
 | `chat_sessions` | SELECT para anon (necesario para Realtime en el widget cliente) |
 | `caja_gastos` | RESTRICTIVE deny-all (solo service role) |
 | `caja_mrr_snapshots` | RESTRICTIVE deny-all (solo service role) |
+| `mp_cuentas` | RESTRICTIVE deny-all (solo service role) |
+| `kb_categorias`, `kb_articulos` | RLS habilitado sin policies → deny-all implícito (solo service role) |
 
 Todo el acceso legítimo desde el backend usa `supabaseAdmin` (service role key) que bypasea RLS por diseño de Postgres.
 
@@ -493,12 +565,18 @@ Todas las rutas retornan JSON. Los errores siguen el formato `{ error: string }`
 **POST /api/clientes/[id]/delete-permanent:**
 Elimina permanentemente el registro del CRM y purga todos los datos del tenant en la plataforma SitioHoy en orden seguro de FK: eventos de órdenes → órdenes → imágenes y variantes de productos → productos → subcategorías → categorías → cupones / mensajes / zonas de envío → `user_tenants` → usuarios de Auth → tenant.
 
+**Importar cliente desde tenant existente:**
+`POST /api/clientes` acepta `existing_tenant_id` para vincular el cliente del CRM a un tenant que ya existe en SitioHoy (buscado previamente via `GET /api/sitiohoy/tenants?tenant_id=...`). En este modo se omite la creación de tenant y usuario de Auth, y se precargan los datos existentes del tenant.
+
+**Pago único:** `POST` / `PUT /api/clientes/[id]` aceptan `pago_unico` (boolean) y `precio_pago_unico` (decimal). Al activarlo, el trigger de base de datos limpia `fecha_vencimiento` y el cliente queda fuera del cálculo de MRR (ver sección Caja).
+
 ### SitioHoy Tenants
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
+| GET | `/api/sitiohoy/tenants` | Buscar tenant existente por `tenant_id` (usado al importar un cliente) |
 | GET | `/api/sitiohoy/tenants/[tenant_id]` | Datos del tenant en plataforma SitioHoy |
-| PATCH | `/api/sitiohoy/tenants/[tenant_id]` | Actualizar datos del tenant |
+| PATCH | `/api/sitiohoy/tenants/[tenant_id]` | Actualizar datos del tenant (incluye `smpt_user` / `smpt_pass` para el envío de emails de la tienda del cliente) |
 | GET | `/api/sitiohoy/tenants/[tenant_id]/users` | Usuarios vinculados al tenant |
 | POST | `/api/sitiohoy/tenants/[tenant_id]/users` | Crear usuario en Auth + vincular al tenant |
 | PATCH | `/api/sitiohoy/tenants/[tenant_id]/users/[user_id]` | Cambiar email y/o contraseña de un usuario |
@@ -511,7 +589,7 @@ Elimina permanentemente el registro del CRM y purga todos los datos del tenant e
 | GET | `/api/solicitudes/nuevos` | Conteo de tickets con `status = new` |
 | GET | `/api/solicitudes/[id]` | Detalle del ticket con info del tenant y contacto CRM |
 | PATCH | `/api/solicitudes/[id]` | Cambiar estado del ticket |
-| POST | `/api/solicitudes/[id]/reset-password` | Enviar email de recuperación via Resend |
+| POST | `/api/solicitudes/[id]/reset-password` | Enviar email de recuperación via Hostinger SMTP |
 
 **Filtros disponibles en GET /api/solicitudes:**
 - `source` — origen del ticket
@@ -603,6 +681,32 @@ Rutas públicas consumidas por el widget `SupportChat.tsx` en `paneles-administr
 - Retorna `403` si la sesión tiene `status = closed` (no reabre silenciosamente)
 - Actualiza `last_message_at`, `last_message_preview` y `unread_agent_count` en la sesión
 
+### Caja
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/caja/resumen` | Resumen del mes: MRR, pagos únicos, gastos, tendencia de los últimos 6 meses |
+| GET | `/api/caja/historico` | Totales acumulados por mes, paginado (usado en `/caja/historico`) |
+| GET | `/api/caja/ingresos-mp` | Desglose de ingresos por cuenta MercadoPago (mes actual en vivo, meses pasados desde snapshot) |
+| GET | `/api/caja/gastos` | Lista de gastos manuales |
+| POST | `/api/caja/gastos` | Crear gasto |
+| PUT | `/api/caja/gastos/[id]` | Editar gasto |
+| DELETE | `/api/caja/gastos/[id]` | Soft delete de gasto |
+
+### Base de Conocimientos
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/kb/categorias` | Lista de categorías |
+| POST | `/api/kb/categorias` | Crear categoría |
+| PUT | `/api/kb/categorias/[id]` | Editar categoría |
+| DELETE | `/api/kb/categorias/[id]` | Soft delete |
+| GET | `/api/kb/articulos` | Lista de artículos (filtrable por categoría) |
+| POST | `/api/kb/articulos` | Crear artículo (contenido en Markdown) |
+| GET | `/api/kb/articulos/[id]` | Obtener artículo por ID |
+| PUT | `/api/kb/articulos/[id]` | Editar artículo |
+| DELETE | `/api/kb/articulos/[id]` | Soft delete |
+
 ### Catálogos
 
 Misma estructura REST para cada catálogo:
@@ -612,7 +716,6 @@ Misma estructura REST para cada catálogo:
 | `/api/catalogos/planes` | Planes de servicio |
 | `/api/catalogos/estados-contacto` | Estados de contacto |
 | `/api/catalogos/etiquetas-negocio` | Etiquetas de negocio |
-| `/api/catalogos/etiquetas-plantillas` | Etiquetas de plantillas |
 
 Cada uno soporta: `GET /` (lista), `POST /` (crear), `PUT /[id]` (editar), `DELETE /[id]` (eliminar).
 
@@ -662,8 +765,12 @@ NEXT_PUBLIC_SITIOHOY_SUPABASE_ANON_KEY=tu_anon_key_sitiohoy
 # URL del panel de clientes SitioHoy (para redirect de recuperación de contraseña)
 SITIOHOY_APP_URL=https://admin.sitiohoy.com.ar
 
-# Resend (envío de emails transaccionales)
-RESEND_API_KEY=tu_api_key_resend
+# Hostinger SMTP (envío de emails transaccionales del propio CRM, vía Nodemailer)
+HOSTINGER_SMTP_HOST=smtp.hostinger.com
+HOSTINGER_SMTP_PORT=465
+HOSTINGER_SMTP_USER=tu_usuario_smtp
+HOSTINGER_SMTP_PASS=tu_password_smtp
+HOSTINGER_SMTP_FROM="SitioHoy <tu_usuario_smtp>"
 
 # Webhook secret — autentica los POSTs de la plataforma SitioHoy al endpoint /api/webhooks/ticket
 WEBHOOK_SECRET=genera_con_openssl_rand_-hex_32
@@ -770,14 +877,17 @@ Mismas que en desarrollo, con estos cambios:
 ### Gestión de clientes
 
 - Vinculación a contacto existente
-- Asignación de plan, etiqueta de negocio y (opcionalmente) plantilla HTML y dominio
+- Asignación de plan, etiqueta de negocio y (opcionalmente) plantilla y dominio
 - Tracking de `fecha_pago` y `fecha_vencimiento` automática (+30 días via trigger)
+- **Pago único**: checkbox en alta y edición con precio personalizado independiente del plan; al activarlo no se calcula `fecha_vencimiento` y el cliente queda fuera del MRR. Se muestra un badge "Pago único" en el listado y el detalle.
+- **Importar cliente desde tenant existente**: en `/clientes/nuevo` se puede vincular el cliente del CRM a un tenant que ya existe en SitioHoy buscándolo por `tenant_id`; en ese modo se omiten los pasos de creación de Auth, Integraciones y Hostinger.
 - Integración con la plataforma SitioHoy via `tenant_id`
 - **Archivado y restauración**: el botón de archivo en la lista aplica soft delete; los clientes archivados se ven en `/clientes/archivados` y se pueden restaurar desde ahí
 - **Dos tipos de borrado**:
   - *Archivar* (soft delete reversible) — oculta el cliente de la lista activa
   - *Borrar permanentemente* — elimina el registro del CRM y purga todos los datos del tenant en SitioHoy; requiere escribir el nombre exacto del cliente para confirmar (estilo GitHub/Vercel)
 - **Gestión de usuarios SitioHoy** desde el detalle del cliente: ver usuarios vinculados al tenant, crear nuevos con email y contraseña, y editar email/contraseña de usuarios existentes
+- **Credenciales de Hostinger (SMTP) del cliente**: en el wizard de alta y en el detalle se puede configurar el usuario y contraseña SMTP que la tienda del cliente usa para enviar sus propios emails (campos `smpt_user` / `smpt_pass` en el tenant de SitioHoy) — distinto del Hostinger SMTP que usa el CRM para sus propios emails
 
 ### Catálogos
 
@@ -806,7 +916,7 @@ Mismas que en desarrollo, con estos cambios:
 - Registro automático en auditoría al cambiar el estado de un ticket
 - **Notificaciones en tiempo real**: cuando llega un ticket nuevo aparece un toast animado clickeable en la esquina inferior derecha que navega al detalle; si el tab no está activo, se muestra además una notificación nativa del sistema operativo con el logo de SitioHoy (requiere permiso del navegador)
 - Badge en el sidebar con contador de tickets nuevos: se inicializa al montar consultando los tickets con `status = new` en la DB, y se incrementa en tiempo real via Realtime
-- **Flujo de cambio de contraseña**: en tickets de tipo `password_reset_request`, botón "Enviar link de recuperación" → genera link via `auth.admin.generateLink()` → envía email personalizado HTML via Resend; el ticket se marca como solucionado automáticamente
+- **Flujo de cambio de contraseña**: en tickets de tipo `password_reset_request`, botón "Enviar link de recuperación" → genera link via `auth.admin.generateLink()` → envía email personalizado HTML via Hostinger SMTP (`src/lib/mailer.ts`); el ticket se marca como solucionado automáticamente
 
 ### Chat de soporte en tiempo real
 
@@ -862,14 +972,23 @@ El módulo de chat permite a los clientes de SitioHoy comunicarse en tiempo real
 ### Caja
 
 - Resumen mensual navegable con selector de mes personalizado (`MonthPicker`)
-- **MRR**: calculado en vivo para el mes actual desde clientes activos; para meses pasados usa snapshots históricos de `caja_mrr_snapshots`
+- **MRR**: calculado en vivo para el mes actual desde clientes activos (excluye clientes de pago único); para meses pasados usa snapshots históricos de `caja_mrr_snapshots`
 - **Snapshots automáticos**: se actualizan al crear/editar/borrar clientes o al cambiar el precio de un plan
 - **Cron job diario** (pg_cron en Supabase): garantiza un snapshot al final de cada día para no perder el histórico de meses sin actividad
 - Gráfico de tendencia de ingresos vs gastos de los últimos 6 meses
 - Desglose de ingresos por plan (nombre, precio, cantidad de clientes)
+- **Desglose de ingresos por cuenta de MercadoPago**: muestra cuánto MRR aporta cada cuenta MP (`detalle_cuentas` en los snapshots), útil cuando hay varias cuentas de cobro activas
+- **Histórico** (`/caja/historico`): vista de todos los meses con datos guardados, navegable mes a mes
 - Gastos manuales: alta, edición y baja con categoría y fecha; selector de categoría custom (`SearchableSelect`) y calendario custom (`DatePicker`)
 - Desglose de gastos por categoría
 - Balance (MRR − gastos) mostrado en cards de resumen
+
+### Base de Conocimientos
+
+- Artículos en Markdown organizados por categorías (`kb_categorias` / `kb_articulos`)
+- CRUD completo de categorías y artículos desde `/base-conocimientos`
+- Editor con preview en vivo (`react-markdown` + `remark-gfm`)
+- Estado publicado/borrador por artículo
 
 ### Auditoría
 
@@ -956,15 +1075,19 @@ El campo `tenant_id` en `clientes` enlaza cada cliente CRM con su tenant en la b
 - Listar usuarios vinculados al tenant con fallback al campo `owner_id` del tenant (`GET`)
 - Crear nuevos usuarios de Auth y vincularlos automáticamente en `user_tenants` (`POST`)
 - Cambiar email y/o contraseña de usuarios existentes via Admin API (`PATCH`)
+- Buscar un tenant existente por `tenant_id` para vincularlo a un cliente nuevo (`GET /api/sitiohoy/tenants`), usado por el flujo de "importar cliente desde tenant existente"
+- Configurar las credenciales Hostinger SMTP (`smpt_user` / `smpt_pass`) que el tenant usa para enviar emails desde su propia tienda — distinto del Hostinger SMTP que usa el CRM (ver abajo)
 
-### Resend — Email transaccional
+### Hostinger SMTP — Email transaccional del CRM
 
 Cuando un admin hace clic en "Enviar link de recuperación" en un ticket de tipo `password_reset_request`:
 1. La API route genera el link via `supabaseSitioHoy.auth.admin.generateLink({ type: 'recovery' })`
-2. Envía un email HTML diseñado con estilo SitioHoy via `resend.emails.send()`
+2. Envía un email HTML diseñado con estilo SitioHoy via `sendMail()` (`src/lib/mailer.ts`), que usa Nodemailer contra el SMTP de Hostinger (`HOSTINGER_SMTP_*`)
 3. El email incluye el botón "Crear nueva contraseña" con el link y un fallback de texto
 
 El template usa layout 100% basado en tablas con estilos inline para compatibilidad con todos los clientes de email (Gmail, Outlook, Apple Mail, mobile).
+
+> Esto es independiente de las credenciales Hostinger SMTP que puede tener cada **cliente/tenant** (`smpt_user` / `smpt_pass`, ver sección anterior): esas son para que la tienda del cliente envíe sus propios emails, no para los emails que envía el CRM.
 
 ### MercadoPago — Suscripciones recurrentes
 
