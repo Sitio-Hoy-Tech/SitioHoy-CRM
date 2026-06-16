@@ -150,6 +150,7 @@ export default function SolicitudDetallePage() {
     if (res.ok) {
       setReplyBody("");
       setToast({ message: "Respuesta enviada al cliente por email", type: "success" });
+      if (solicitud?.status !== "archived") handleStatusChange("archived");
     } else {
       const json = await res.json();
       setToast({ message: json.error || "Error al enviar la respuesta", type: "error" });
@@ -237,9 +238,10 @@ export default function SolicitudDetallePage() {
             <textarea
               value={replyBody}
               onChange={e => setReplyBody(e.target.value)}
-              placeholder={`Escribí tu respuesta para ${solicitud.name}…`}
+              placeholder={isSolved ? "El ticket está solucionado. Reabrilo para responder." : `Escribí tu respuesta para ${solicitud.name}…`}
               rows={5}
-              className="w-full bg-elevated border border-edge rounded-lg px-4 py-3 text-sm text-body placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              disabled={isSolved}
+              className="w-full bg-elevated border border-edge rounded-lg px-4 py-3 text-sm text-body placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-muted">
@@ -248,7 +250,7 @@ export default function SolicitudDetallePage() {
               <Button
                 onClick={handleSendReply}
                 loading={sendingReply}
-                disabled={!replyBody.trim()}
+                disabled={isSolved || !replyBody.trim()}
               >
                 Enviar respuesta
               </Button>
