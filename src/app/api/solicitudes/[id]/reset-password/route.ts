@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendMail } from "@/lib/mailer";
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabaseSitioHoy } from "@/lib/supabase-sitiohoy";
 import { getSessionUser } from "@/lib/api";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function buildResetEmail(name: string, resetUrl: string): string {
   const year = new Date().getFullYear();
@@ -161,15 +159,14 @@ export async function POST(
 
     const resetUrl = linkData.properties.action_link;
 
-    const { error: emailError } = await resend.emails.send({
-      from: "SitioHoy <no-reply@sitiohoy.com.ar>",
+    const { error: emailError } = await sendMail({
       to: ticket.email,
       subject: "Restablecer contraseña de SitioHoy",
       html: buildResetEmail(ticket.name, resetUrl),
     });
 
     if (emailError) {
-      return NextResponse.json({ error: emailError.message }, { status: 500 });
+      return NextResponse.json({ error: emailError }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });

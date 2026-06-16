@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendMail } from "@/lib/mailer";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSessionUser } from "@/lib/api";
 import { registrarAuditoria } from "@/lib/audit";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function buildReplyEmail(contactName: string, originalMessage: string, replyBody: string): string {
   const year = new Date().getFullYear();
@@ -139,15 +137,14 @@ export async function POST(
       return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 });
     }
 
-    const { error: emailError } = await resend.emails.send({
-      from: "SitioHoy <no-reply@sitiohoy.com.ar>",
+    const { error: emailError } = await sendMail({
       to: ticket.email,
       subject: "Respuesta a tu consulta — SitioHoy",
       html: buildReplyEmail(ticket.name, ticket.message, replyBody),
     });
 
     if (emailError) {
-      return NextResponse.json({ error: emailError.message }, { status: 500 });
+      return NextResponse.json({ error: emailError }, { status: 500 });
     }
 
     await registrarAuditoria({
